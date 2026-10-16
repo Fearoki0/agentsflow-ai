@@ -2271,33 +2271,56 @@
     formatted = formatted.replace(/`([^`\n]+)`/g, '<code class="md-inline-code">$1</code>');
 
     // 15. Rich Roleplay, Typography & Formatting:
-    // 15a. Spoilers: ||text||
-    formatted = formatted.replace(/\|\|([\s\S]*?)\|\|/g, '<span class="rp-spoiler" onclick="this.classList.toggle(\'revealed\')" title="Tap to reveal spoiler">$1</span>');
+    // 15a. Spoilers: ||text|| (strictly avoid single/triple pipes and logical OR)
+    formatted = formatted.replace(/(?<!\|)\|\|(?!\|)([^\s\|](?:[\s\S]*?[^\s\|])?)\|\|(?!\|)/g,
+      '<span class="rp-spoiler" onclick="this.classList.toggle(\'revealed\')" title="Tap to reveal spoiler">$1</span>');
 
-    // 15b. Highlights: ==text==
-    formatted = formatted.replace(/==([\s\S]*?)==/g, '<mark class="rp-highlight">$1</mark>');
+    // 15b. Highlights: ==text== (strictly avoid === comparison operators in JS)
+    formatted = formatted.replace(/(?<!=)==(?!=)([^\s=](?:[\s\S]*?[^\s=])?)==(?!=)/g,
+      '<mark class="rp-highlight">$1</mark>');
 
-    // 15c. Strikethrough: ~~text~~
-    formatted = formatted.replace(/~~([\s\S]*?)~~/g, '<del class="rp-strikethrough">$1</del>');
+    // 15c. Strikethrough: ~~text~~ (strictly avoid ~~~)
+    formatted = formatted.replace(/(?<!~)~~(?!~)([^\s~](?:[\s\S]*?[^\s~])?)~~(?!~)/g,
+      '<del class="rp-strikethrough">$1</del>');
 
-    // 15d. Underline: <u>text</u>, &lt;u&gt;text&lt;/u&gt;, or ++text++
-    formatted = formatted.replace(/(?:&lt;u&gt;|<u>|\+\+)([\s\S]*?)(?:&lt;\/u&gt;|<\/u>|\+\+)/gi, '<span class="rp-underline">$1</span>');
+    // 15d. Underline: <u>text</u>, &lt;u&gt;text&lt;/u&gt;, or bounded ++text++ (preserves C++ and i++)
+    formatted = formatted.replace(/(?:&lt;u&gt;|<u>)([\s\S]*?)(?:&lt;\/u&gt;|<\/u>)/gi,
+      '<span class="rp-underline">$1</span>');
+    formatted = formatted.replace(/(?:^|(?<=[\s\(\[\{"'“‘]|&quot;|&#039;))\+\+([^\+\s\r\n](?:[^\+\r\n]*?[^\+\s\r\n])?)\+\+(?=[\s\)\],<>\.\?!:;'"\}\]”’]|&quot;|&#039;|$)/g,
+      '<span class="rp-underline">$1</span>');
 
     // 15e. Superscript ^text^ & Subscript ~text~
     formatted = formatted.replace(/\^([^\s\^]+)\^/g, '<sup>$1</sup>');
-    formatted = formatted.replace(/~([^\s~]+)~/g, '<sub>$1</sub>');
+    formatted = formatted.replace(/(?<!~)~([^\s~]+)~(?!~)/g, '<sub>$1</sub>');
 
-    // 15f. Bold-Italic Roleplay Actions: ***text*** or ___text___
-    formatted = formatted.replace(/\*\*\*([^\*]+?)\*\*\*/g, '<strong class="rp-bold-action"><em class="rp-action">$1</em></strong>');
-    formatted = formatted.replace(/___([^_]+?)___/g, '<strong class="rp-bold-action"><em class="rp-action">$1</em></strong>');
+    // 15f. Bold-Italic Roleplay Actions (all 6 markdown combinations with rp-bold-action & rp-action classes):
+    // ***text*** or ___text___
+    formatted = formatted.replace(/\*\*\*(?!\s)((?:[^\*\r\n]|\r?\n(?!\r?\n))+?)(?<!\s)\*\*\*/g,
+      '<strong class="rp-bold-action"><em class="rp-action">$1</em></strong>');
+    formatted = formatted.replace(/(?:^|(?<=[\s\(\[\{"'“‘]|&quot;|&#039;))___(?!\s)((?:[^_\r\n]|\r?\n(?!\r?\n))+?)(?<!\s)___(?=[\s\)\],<>\.\?!:;'"\}\]”’]|&quot;|&#039;|$)/g,
+      '<strong class="rp-bold-action"><em class="rp-action">$1</em></strong>');
 
-    // 15g. Bold: **text** or __text__
-    formatted = formatted.replace(/\*\*([^\*]+?)\*\*/g, '<strong>$1</strong>');
-    formatted = formatted.replace(/__([^_]+?)__/g, '<strong>$1</strong>');
+    // Mixed bold-italic combinations: **_text_**, *__text__*, _**text**_, __*text*__
+    formatted = formatted.replace(/\*\*_(?!\s)((?:[^\*\r\n]|\r?\n(?!\r?\n))+?)(?<!\s)_\*\*/g,
+      '<strong class="rp-bold-action"><em class="rp-action">$1</em></strong>');
+    formatted = formatted.replace(/\*__(?!\s)((?:[^\*\r\n]|\r?\n(?!\r?\n))+?)(?<!\s)__\*/g,
+      '<strong class="rp-bold-action"><em class="rp-action">$1</em></strong>');
+    formatted = formatted.replace(/(?:^|(?<=[\s\(\[\{"'“‘]|&quot;|&#039;))_\*\*(?!\s)((?:[^\*\r\n]|\r?\n(?!\r?\n))+?)(?<!\s)\*\*_(?=[\s\)\],<>\.\?!:;'"\}\]”’]|&quot;|&#039;|$)/g,
+      '<strong class="rp-bold-action"><em class="rp-action">$1</em></strong>');
+    formatted = formatted.replace(/(?:^|(?<=[\s\(\[\{"'“‘]|&quot;|&#039;))__\*(?!\s)((?:[^\*\r\n]|\r?\n(?!\r?\n))+?)(?<!\s)\*__(?=[\s\)\],<>\.\?!:;'"\}\]”’]|&quot;|&#039;|$)/g,
+      '<strong class="rp-bold-action"><em class="rp-action">$1</em></strong>');
 
-    // 15h. Italic & Roleplay Actions: *action* or _action_
-    formatted = formatted.replace(/(?:^|(?<=[\s\(\[>\.,!?;:\-&]))\*([^\*\n]+?)\*(?=[^\*]|$)/g, '<em class="rp-action">$1</em>');
-    formatted = formatted.replace(/(?:^|(?<=[\s\(\[>\.,!?;:\-&]))_([^_\n]+?)_(?=[^_]|$)/g, '<em class="rp-action">$1</em>');
+    // 15g. Bold: **text** or __text__ (supports soft line wraps within paragraphs)
+    formatted = formatted.replace(/\*\*(?!\s)((?:[^\*\r\n]|\r?\n(?!\r?\n))+?)(?<!\s)\*\*/g,
+      '<strong class="rp-bold">$1</strong>');
+    formatted = formatted.replace(/(?:^|(?<=[\s\(\[\{"'“‘]|&quot;|&#039;))__(?!\s)((?:[^_\r\n]|\r?\n(?!\r?\n))+?)(?<!\s)__(?=[\s\)\],<>\.\?!:;'"\}\]”’]|&quot;|&#039;|$)/g,
+      '<strong class="rp-bold">$1</strong>');
+
+    // 15h. Italic & Roleplay Actions: *action* or _action_ (supports soft line wraps, quotes & entities)
+    formatted = formatted.replace(/\*(?!\s)((?:[^\*\r\n]|\r?\n(?!\r?\n))+?)(?<!\s)\*/g,
+      '<em class="rp-action">$1</em>');
+    formatted = formatted.replace(/(?:^|(?<=[\s\(\[\{"'“‘]|&quot;|&#039;))_(?!\s)((?:[^_\r\n]|\r?\n(?!\r?\n))+?)(?<!\s)_(?=[\s\)\],<>\.\?!:;'"\}\]”’]|&quot;|&#039;|$)/g,
+      '<em class="rp-action">$1</em>');
 
     // 16. Paragraph gaps & line breaks for prose
     formatted = formatted.replace(/\n\n+/g, '<div class="md-para-gap"></div>');
