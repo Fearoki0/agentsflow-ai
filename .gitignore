@@ -1,0 +1,18 @@
+# Android build artifacts
+android/compiled_res.zip
+android/unsigned_unaligned.apk
+android/classes.dex
+android/gen/
+android/obj/
+android/release.keystore
+android/lib/android.jar
+builds/*.apk
+
+# Node dependencies & local data
+node_modules/
+.next/
+public/local-data.json
+public/uploads/*
+!public/uploads/.gitkeep
+*.log
+.DS_Store
