@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<!--
+  AgentsFlow AI - Universal Mobile AI Platform
+  Copyright (C) 2026 Saad (@fearoki)
+  Licensed under GNU General Public License v3.0 (GNU GPLv3).
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AgentsFlow AI</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="dark">
+  <div id="app-container">
+    <!-- Backdrop for mobile sidebar -->
+    <div id="sidebar-backdrop"></div>
+
+    <!-- Sidebar with Smooth Drawer & Minimize Button -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <button class="new-chat-btn" id="new-chat-btn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span>New Chat</span>
+        </button>
+        <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" title="Minimize / Collapse Sidebar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+      </div>
+
+      <!-- Conversation Search -->
+      <div class="sidebar-search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="chat-search-input" placeholder="Search conversations...">
+      </div>
+
+      <!-- Filter Tabs: All, Pinned, Archived -->
+      <div class="sidebar-filter-tabs">
+        <button class="filter-tab-btn active" data-filter="all">All</button>
+        <button class="filter-tab-btn" data-filter="pinned">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-2l-2-3V6a1 1 0 0 0-1-1h-8a1 1 0 0 0-1 1v6l-2 3v2z"></path></svg>
+          <span>Pinned</span>
+        </button>
+        <button class="filter-tab-btn" data-filter="archived">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+          <span>Archive</span>
+        </button>
+      </div>
+
+      <div class="chat-history-list" id="chat-history-list">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Minimized Sidebar Rail Icons (Active when sidebar is minimized) -->
+      <div class="sidebar-minimized-rail" id="sidebar-minimized-rail">
+        <button class="rail-icon-btn" id="rail-new-chat-btn" title="New Chat">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+        <button class="rail-icon-btn" id="rail-features-btn" title="100+ Agent Features Hub">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
+        </button>
+        <button class="rail-icon-btn" id="rail-models-btn" title="Model Selector & URL">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+        </button>
+        <button class="rail-icon-btn" id="rail-settings-btn" title="AI Parameters">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main id="main-content">
+      <!-- Top App Header -->
+      <header class="app-header">
+        <div class="header-left">
+          <button class="icon-btn" id="toggle-sidebar-btn" title="Conversations">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+
+          <!-- Dual Model Trigger: Model Picker + Direct Provider API & URL (↓) Trigger -->
+          <div class="model-selector-group">
+            <button class="model-pill" id="model-pill-trigger" title="Select Model">
+              <span class="model-pill-dot" id="model-pill-dot"><span class="liquid-dot"></span></span>
+              <span id="current-model-name">DeepSeek R1</span>
+              <span class="model-badge-cap" id="model-pill-cap">Thinking</span>
+            </button>
+            <button class="model-api-quick-btn" id="header-api-config-btn" title="Open Provider API & Base URL Settings">
+              <span class="api-label-text">API</span>
+              <span class="api-chevron-down"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <button class="action-pill-btn features-pill-btn" id="top-features-btn" title="100+ Actionable Features Hub">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
+            <span>Features</span>
+          </button>
+          <button class="icon-btn" id="model-settings-btn" title="AI Model Parameters & Settings">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          </button>
+          <button class="icon-btn" id="export-btn" title="Export Chat">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          </button>
+          <button class="icon-btn" id="theme-toggle-btn" title="Toggle Theme">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Scrollable Message Stream -->
+      <section id="messages-container">
+        <!-- Messages rendered dynamically -->
+      </section>
+
+      <!-- Floating Composer -->
+      <footer id="composer-container">
+        <!-- Slash Command Autocomplete Pop-up Menu -->
+        <div class="slash-commands-menu" id="slash-commands-menu">
+          <div class="slash-menu-header">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
+              <span>Actionable Commands (100+ Features)</span>
+            </div>
+            <span style="font-size: 10px; color: var(--text-muted);">Type to filter or press Esc</span>
+          </div>
+          <div class="slash-commands-list" id="slash-commands-list">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <div class="composer-box">
+          <!-- Voice Recording Waveform Visualizer -->
+          <div class="recording-bar" id="recording-bar">
+            <div class="wave-bars">
+              <span class="wave-bar"></span>
+              <span class="wave-bar"></span>
+              <span class="wave-bar"></span>
+              <span class="wave-bar"></span>
+            </div>
+            <span>Listening... Speak your prompt clearly</span>
+          </div>
+
+          <!-- Dynamic Active Tools Bar with Auto-Unlock Indicators -->
+          <div class="composer-tools-bar" id="composer-tools-bar">
+            <button type="button" class="tool-pill-btn active unlocked" id="tool-thinking-btn" title="Toggle Deep Reasoning">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tool-svg"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.54z"></path><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.54z"></path></svg>
+              <span class="tool-pill-label" id="tool-thinking-label">Thinking: High</span>
+            </button>
+            <button type="button" class="tool-pill-btn" id="tool-vision-btn" title="Multi-Modal Vision Attached" style="display: none;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tool-svg"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              <span class="tool-pill-label" id="tool-vision-label">Vision</span>
+            </button>
+            <button type="button" class="tool-pill-btn" id="tool-web-btn" title="Web Grounding & Citations">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tool-svg"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+              <span class="tool-pill-label">Web Grounding</span>
+            </button>
+            <button type="button" class="tool-pill-btn active" id="tool-code-btn" title="Enable Interactive Code Sandbox">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tool-svg"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+              <span class="tool-pill-label">Sandbox</span>
+            </button>
+            <div class="capability-unlocked-pill" id="capability-unlocked-pill">
+              <span class="liquid-spark-dot"></span>
+              <span id="active-capabilities-summary">Reasoning Ready</span>
+            </div>
+          </div>
+
+          <!-- Attached Image Preview Container -->
+          <div class="attached-image-container" id="attached-image-container" style="display: none;">
+            <div class="attached-image-chip">
+              <img id="attached-image-thumb" src="" alt="Attached image preview">
+              <span class="attached-image-name" id="attached-image-name">image.jpg</span>
+              <button type="button" class="attached-image-remove-btn" id="attached-image-remove-btn" title="Remove image">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="6" y2="18"></line></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Hidden Image File Input for Vision Upload -->
+          <input type="file" id="image-file-input" accept="image/*" style="display: none;">
+
+          <textarea id="chat-textarea" rows="1" placeholder="Type a message or / for 100+ actionable features (/goal, /plan, /boost, /code)..."></textarea>
+
+          <div class="composer-toolbar">
+            <div class="composer-tools-left">
+              <button class="tool-icon-btn highlight-feature-btn" id="features-hub-btn" title="100+ Features Hub (Autonomous Agents, Dev, STEM, Strategy)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
+              </button>
+              <button class="tool-icon-btn slash-trigger-btn" id="slash-trigger-btn" title="Actionable Slash Commands (/goal, /plan, /boost)">
+                <span>/</span>
+              </button>
+              <button class="tool-icon-btn" id="tool-attach-btn" title="Attach Image for Multi-Modal Vision Analysis">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+              </button>
+              <!-- Secondary Tools accessible via clean SVG buttons -->
+              <button class="tool-icon-btn" id="image-gen-btn" title="AI Image Studio (DALL-E 3 & Flux)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+              </button>
+              <!-- Hidden fallback elements to ensure existing listeners don't break -->
+              <span id="model-selector-quick-btn" style="display: none;"></span>
+              <span id="prompt-lib-btn" style="display: none;"></span>
+            </div>
+
+            <div class="composer-tools-right">
+              <button class="tool-icon-btn" id="voice-record-btn" title="Voice Dictation">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+              </button>
+              <button class="send-btn" id="send-btn" title="Send Message">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+              </button>
+              <button class="send-btn" id="stop-btn" title="Stop Generation" style="display: none; background-color: #ef4444;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <!-- Modal: Model Selector with Dedicated Collapsible Provider API & Base URL Drawer (↓) -->
+  <div class="modal-overlay" id="model-selector-modal">
+    <div class="modal-card modal-card-large">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">Model Selection & Providers</h3>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+            Choose active model or configure custom provider API & base URL
+          </div>
+        </div>
+        <button class="modal-close-btn" title="Close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="6" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <!-- Segmented Switcher: Model Selection vs Provider API & URL Options -->
+      <div class="model-modal-segmented-nav">
+        <button type="button" class="modal-nav-tab active" id="modal-tab-models">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+          <span>Model Selection</span>
+        </button>
+        <button type="button" class="modal-nav-tab" id="modal-tab-provider">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z"></path></svg>
+          <span>Provider API & Base URL</span>
+          <span class="api-tab-chevron"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </button>
+      </div>
+
+      <!-- Dedicated Model Selection View -->
+      <div class="modal-tab-view active" id="modal-view-models">
+        <!-- Option to open Model API & Provider URL Options -->
+        <button type="button" class="provider-drawer-toggle" id="toggle-provider-drawer-btn" title="Toggle Provider API, Base URL & Keys">
+        <div class="provider-drawer-toggle-left">
+          <span class="status-indicator-dot online"></span>
+          <span class="provider-drawer-toggle-title">Provider API & Base URL</span>
+          <span class="provider-drawer-toggle-sub" id="provider-drawer-summary"><span id="current-provider-badge-name">OpenRouter</span> <span id="current-provider-badge-url">(https://openrouter.ai/api/v1)</span></span>
+        </div>
+        <div class="provider-drawer-toggle-right">
+          <span class="key-status-badge" id="key-status-badge">Key Configured</span>
+          <span class="provider-drawer-chevron" id="provider-drawer-chevron"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </div>
+      </button>
+
+      <!-- Provider URL & API Key Collapsible Drawer (Option ↓) -->
+      <div class="provider-prominent-card collapsed" id="provider-config-drawer">
+        <div class="provider-presets-row">
+          <span class="provider-presets-label">Fast Presets:</span>
+          <div class="provider-presets-buttons">
+            <button type="button" class="provider-preset-btn active" data-preset="openrouter" onclick="window.afSetProviderPreset('openrouter')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z"></path></svg>
+              <span>OpenRouter</span>
+            </button>
+            <button type="button" class="provider-preset-btn" data-preset="groq" onclick="window.afSetProviderPreset('groq')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
+              <span>Groq</span>
+            </button>
+            <button type="button" class="provider-preset-btn" data-preset="deepseek" onclick="window.afSetProviderPreset('deepseek')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.54z"></path><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.54z"></path></svg>
+              <span>DeepSeek</span>
+            </button>
+            <button type="button" class="provider-preset-btn" data-preset="openai" onclick="window.afSetProviderPreset('openai')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 3v18M3 12h18"></path></svg>
+              <span>OpenAI</span>
+            </button>
+            <button type="button" class="provider-preset-btn" data-preset="ollama" onclick="window.afSetProviderPreset('ollama')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+              <span>Ollama Local</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="provider-inputs-grid">
+          <div class="form-group" style="margin-bottom: 6px;">
+            <label class="form-label" style="display: flex; justify-content: space-between;">
+              <span>Provider Base URL</span>
+              <span style="font-size: 10px; color: var(--text-muted);">Standard OpenAI compatible /v1 endpoint</span>
+            </label>
+            <input type="text" id="model-modal-url-input" class="form-input" placeholder="e.g. https://openrouter.ai/api/v1 or http://localhost:11434/v1">
+          </div>
+          <div class="form-group" style="margin-bottom: 6px;">
+            <label class="form-label" style="display: flex; justify-content: space-between;">
+              <span>API Key <span style="font-weight: normal; color: var(--text-muted);">(Saved in device storage)</span></span>
+              <span id="api-key-hint" style="font-size: 10px; color: var(--text-muted);">Optional for local Ollama</span>
+            </label>
+            <div style="display: flex; gap: 6px;">
+              <input type="password" id="model-modal-key-input" class="form-input" placeholder="Enter API Key (sk-...)" style="flex: 1;">
+              <button type="button" class="action-pill-btn" id="toggle-key-visibility-btn" title="Toggle Show/Hide" style="padding: 0 12px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="provider-actions-row">
+          <button type="button" class="primary-btn" id="modal-probe-btn" style="flex: 1; background-color: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-subtle);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <span>Live Probe Models</span>
+          </button>
+          <button type="button" class="primary-btn" id="modal-save-provider-btn" style="flex: 1;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            <span>Save & Connect</span>
+          </button>
+        </div>
+        <div id="modal-probe-status" class="probe-status-banner"></div>
+        <div class="provider-drawer-footer">
+          <button type="button" class="back-to-models-btn" id="back-to-models-btn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            <span>Back to Model Selection</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Dedicated Model Selection View Content -->
+      <div class="models-selection-body" id="models-selection-body">
+        <div class="model-selection-header-row">
+        <span class="selection-section-label">Available Models</span>
+        <span class="model-count-tag" id="models-available-count">15 Ready</span>
+      </div>
+
+      <!-- Model Category Filter Chips -->
+      <div class="model-category-chips">
+        <button class="model-chip active" data-category="all">All Models</button>
+        <button class="model-chip" data-category="reasoning">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.54z"></path><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.54z"></path></svg>
+          <span>Reasoning / R1</span>
+        </button>
+        <button class="model-chip" data-category="vision">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          <span>Vision & OCR</span>
+        </button>
+        <button class="model-chip" data-category="chat">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          <span>Chat</span>
+        </button>
+        <button class="model-chip" data-category="coding">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          <span>Coding</span>
+        </button>
+        <button class="model-chip" data-category="image">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+          <span>Image Gen</span>
+        </button>
+        <button class="model-chip" data-category="audio">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+          <span>Voice & Audio</span>
+        </button>
+        <button class="model-chip" data-category="video">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+          <span>Video Gen</span>
+        </button>
+      </div>
+
+      <!-- Search Input -->
+      <input type="text" id="model-search-input" class="form-input" placeholder="Search by model name, ID, or capability (e.g. R1, claude, vision, groq, whisper, image)...">
+
+      <!-- Dynamic Models List -->
+      <div id="models-list-container" class="models-list-container">
+        <!-- Models rendered dynamically -->
+      </div>
+
+      <!-- Direct Custom Model Input -->
+      <div class="custom-model-box">
+        <div style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Direct Custom Model ID</div>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="custom-model-id-input" class="form-input" placeholder="e.g. anthropic/claude-3.5-sonnet or custom-vllm" style="flex: 1;">
+          <button class="primary-btn" id="use-custom-model-btn" style="white-space: nowrap;">Use Model</button>
+        </div>
+      </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <!-- Modal: 100+ Actionable Features Hub & Command Palette -->
+  <div class="modal-overlay" id="features-modal">
+    <div class="modal-card modal-card-large">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="feature-header-icon-box">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
+          </div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h3 class="modal-title">100+ Actionable Agent Features</h3>
+              <span class="features-supported-counter" id="features-supported-counter">Model Filtered</span>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+              Only features supported by your active model are displayed below
+            </div>
+          </div>
+        </div>
+        <button class="modal-close-btn" title="Close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="6" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <!-- Feature Search -->
+      <div class="features-search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="features-search-input" class="form-input" placeholder="Search 100+ features (e.g. goal, plan, boost, code, audit, test, math, sql, arch)...">
+      </div>
+
+      <!-- Feature Category Chips (Bespoke Linear Style) -->
+      <div class="features-category-chips">
+        <button class="feature-chip active" data-category="all">All Features</button>
+        <button class="feature-chip" data-category="agent">Autonomous Agent</button>
+        <button class="feature-chip" data-category="engineering">Engineering</button>
+        <button class="feature-chip" data-category="architecture">Architecture</button>
+        <button class="feature-chip" data-category="reasoning">STEM Reasoning</button>
+        <button class="feature-chip" data-category="security">Security & Audit</button>
+        <button class="feature-chip" data-category="research">Research</button>
+        <button class="feature-chip" data-category="product">Product Strategy</button>
+        <button class="feature-chip" data-category="data">Data & SQL</button>
+        <button class="feature-chip" data-category="writing">Explanations</button>
+        <button class="feature-chip" data-category="tools">Tools & Controls</button>
+        <button class="feature-chip" data-category="vision">Vision</button>
+        <button class="feature-chip" data-category="image">Image Gen</button>
+        <button class="feature-chip" data-category="audio">Voice & Audio</button>
+      </div>
+
+      <!-- Features Grid Container -->
+      <div class="features-grid" id="features-grid">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: AI Model Parameters & Advanced Settings -->
+  <div class="modal-overlay" id="model-settings-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">AI Model Parameters & Settings</h3>
+          <div style="font-size: 11px; color: var(--text-muted);">Configure generation parameters, limits, penalties, and system instructions</div>
+        </div>
+        <button class="modal-close-btn" title="Close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="6" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <!-- Quick Preset Buttons -->
+      <div style="margin-bottom: 6px;">
+        <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; font-weight: 600;">Parameter Presets:</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+          <button type="button" class="action-pill-btn" onclick="window.afApplyParamPreset('precise')">Coding & Precise</button>
+          <button type="button" class="action-pill-btn" onclick="window.afApplyParamPreset('balanced')">Balanced</button>
+          <button type="button" class="action-pill-btn" onclick="window.afApplyParamPreset('creative')">Creative</button>
+          <button type="button" class="action-pill-btn" onclick="window.afApplyParamPreset('deep_reasoning')">Deep STEM</button>
+        </div>
+      </div>
+
+      <!-- Sliders -->
+      <div class="form-group">
+        <div class="slider-label-row">
+          <label class="form-label">Temperature: <span id="temp-val-badge" class="slider-badge">0.7</span></label>
+          <span class="param-desc">Controls randomness. Lower is more deterministic.</span>
+        </div>
+        <input type="range" id="param-temp-slider" min="0" max="2" step="0.05" value="0.7" class="form-range">
+      </div>
+
+      <div class="form-group">
+        <div class="slider-label-row">
+          <label class="form-label">Max Output Tokens: <span id="max-tokens-badge" class="slider-badge">4096</span></label>
+          <span class="param-desc">Upper limit on generation response length.</span>
+        </div>
+        <input type="range" id="param-max-tokens-slider" min="256" max="32768" step="256" value="4096" class="form-range">
+      </div>
+
+      <div class="form-group">
+        <div class="slider-label-row">
+          <label class="form-label">Top P (Nucleus Sampling): <span id="top-p-badge" class="slider-badge">0.95</span></label>
+          <span class="param-desc">Alternative to temperature sampling.</span>
+        </div>
+        <input type="range" id="param-top-p-slider" min="0.05" max="1" step="0.05" value="0.95" class="form-range">
+      </div>
+
+      <div class="form-group">
+        <div class="slider-label-row">
+          <label class="form-label">Presence Penalty: <span id="presence-badge" class="slider-badge">0.0</span></label>
+          <span class="param-desc">Encourages talking about new topics (-2.0 to 2.0).</span>
+        </div>
+        <input type="range" id="param-presence-slider" min="-2" max="2" step="0.1" value="0.0" class="form-range">
+      </div>
+
+      <div class="form-group">
+        <div class="slider-label-row">
+          <label class="form-label">Frequency Penalty: <span id="frequency-badge" class="slider-badge">0.0</span></label>
+          <span class="param-desc">Reduces verbatim repetition of words (-2.0 to 2.0).</span>
+        </div>
+        <input type="range" id="param-frequency-slider" min="-2" max="2" step="0.1" value="0.0" class="form-range">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Conversation Memory Limit</label>
+        <select id="param-context-limit" class="form-input">
+          <option value="0">Unlimited (Full Chat History)</option>
+          <option value="50">Last 50 Messages</option>
+          <option value="20" selected>Last 20 Messages (Recommended)</option>
+          <option value="10">Last 10 Messages (Fast / Low Memory)</option>
+          <option value="6">Last 6 Messages (Minimal Context)</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="reasoning-effort-group">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <label class="form-label" style="margin-bottom: 0;">Reasoning Effort</label>
+          <span id="reasoning-model-support-note" style="font-size: 10px; color: var(--accent-terracotta);">Thinking Model Active</span>
+        </div>
+        <div class="reasoning-effort-pills">
+          <button type="button" class="effort-pill-btn" data-effort="low">Low</button>
+          <button type="button" class="effort-pill-btn active" data-effort="medium">Medium</button>
+          <button type="button" class="effort-pill-btn" data-effort="high">High</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Persistent System Instructions</label>
+        <textarea id="param-system-prompt" class="form-input" rows="3" placeholder="Custom instructions to guide every response from the AI..."></textarea>
+      </div>
+
+      <!-- App Launch Behavior Setting -->
+      <div class="form-group">
+        <label class="form-label">App Launch Behavior</label>
+        <select id="setting-launch-behavior" class="form-input">
+          <option value="new_chat" selected>Open Fresh New Chat (Default)</option>
+          <option value="resume">Resume Last Chat</option>
+        </select>
+        <span class="param-desc">Choose whether opening the app starts with a fresh clean chat or reopens your previous session.</span>
+      </div>
+
+      <!-- API Budget Controller & Money Maintenance -->
+      <div class="form-group" style="padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <label class="form-label" style="margin-bottom: 0; font-weight: 600;">API Budget Controller</label>
+          <span id="budget-spend-badge" style="font-size: 11px; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.15); color: var(--badge-green); font-weight: 600;">Spent: ₹0.00 / ₹100.00</span>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+          <label style="font-size: 11px; color: var(--text-muted); white-space: nowrap;">Budget Limit (₹):</label>
+          <input type="number" id="setting-budget-limit" class="form-input" style="flex: 1;" value="100" min="1" step="5">
+          <button type="button" class="action-pill-btn" id="reset-spend-btn" title="Reset Spend Counter">Reset</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary);">
+          <input type="checkbox" id="setting-budget-warn" checked>
+          <label for="setting-budget-warn">Warn before sending if cost exceeds budget limit</label>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-top: 4px;">
+        <button class="primary-btn" id="reset-params-btn" style="flex: 1; background-color: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-subtle);">Reset Defaults</button>
+        <button class="primary-btn" id="save-params-btn" style="flex: 1;">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Code Sandbox & Interactive Multi-Language Runner -->
+  <div class="modal-overlay" id="code-sandbox-modal">
+    <div class="modal-card modal-card-large sandbox-modal-card">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div class="feature-header-icon-box">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          </div>
+          <div>
+            <h3 class="modal-title" id="sandbox-modal-title">Code Runner & Viewer</h3>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 1px;" id="sandbox-modal-sub">HTML, JavaScript, CSS & Python execution environment</div>
+          </div>
+        </div>
+        <div class="sandbox-modal-header-actions">
+          <button type="button" class="action-pill-btn sandbox-header-run-btn" id="sandbox-run-btn" title="Run Code">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <span>Run</span>
+          </button>
+          <button type="button" class="action-pill-btn" id="sandbox-reload-btn" title="Reload & Re-run">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            <span>Reload</span>
+          </button>
+          <button type="button" class="action-pill-btn" id="sandbox-copy-btn" title="Copy Code">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <span>Copy</span>
+          </button>
+          <button type="button" class="modal-close-btn" title="Close">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="6" y2="18"></line></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Segmented Navigation Tabs: Preview / Run Output vs Code View -->
+      <div class="sandbox-segmented-nav">
+        <button type="button" class="sandbox-nav-tab active" id="sandbox-tab-preview" onclick="window.afSwitchSandboxTab('preview')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          <span>Preview / Run Output</span>
+        </button>
+        <button type="button" class="sandbox-nav-tab" id="sandbox-tab-code" onclick="window.afSwitchSandboxTab('code')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          <span>Code View</span>
+        </button>
+      </div>
+
+      <!-- Sandbox Tab Pane 1: Preview & Console Output -->
+      <div class="sandbox-tab-pane active" id="sandbox-pane-preview">
+        <div class="sandbox-container" id="sandbox-iframe-container">
+          <iframe id="sandbox-iframe" sandbox="allow-scripts allow-modals allow-forms allow-popups" src="about:blank"></iframe>
+        </div>
+        <div class="sandbox-console-drawer" id="sandbox-console-drawer">
+          <div class="sandbox-console-header">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="liquid-spark-dot"></span>
+              <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary);">Execution Console</span>
+            </div>
+            <button type="button" class="sandbox-console-clear-btn" id="sandbox-console-clear-btn">Clear</button>
+          </div>
+          <pre class="sandbox-console-output" id="sandbox-console-output"><span style="color: var(--text-muted);">Ready. Click Run or Reload to execute code.</span></pre>
+        </div>
+      </div>
+
+      <!-- Sandbox Tab Pane 2: Code View & Editor -->
+      <div class="sandbox-tab-pane" id="sandbox-pane-code" style="display: none;">
+        <div class="sandbox-code-viewer-container">
+          <div class="sandbox-code-toolbar">
+            <span class="sandbox-code-lang-tag" id="sandbox-code-lang-tag">HTML</span>
+            <span style="font-size: 11px; color: var(--text-muted);" id="sandbox-code-meta-info">Editable source • Click Run above to execute changes</span>
+          </div>
+          <textarea id="sandbox-code-editor" class="sandbox-code-editor" spellcheck="false" placeholder="Enter code here..."></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Prompt Library -->
+  <div class="modal-overlay" id="prompt-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Specialized System Prompts</h3>
+        <button class="modal-close-btn" title="Close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="6" y2="18"></line></svg>
+        </button>
+      </div>
+      <input type="text" id="prompt-search-input" class="form-input" placeholder="Search prompts...">
+      <div class="personas-grid" id="personas-grid">
+        <!-- Personas rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: AI Image Studio -->
+  <div class="modal-overlay" id="image-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">AI Image Studio (DALL-E 3 & Flux)</h3>
+        <button class="modal-close-btn" title="Close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="6" y2="18"></line></svg>
+        </button>
+      </div>
+      <!-- Explicit Image Model Selection & Real Pricing -->
+      <div class="form-group">
+        <label class="form-label">Generation Model</label>
+        <select id="img-model-select" class="form-input">
+          <option value="black-forest-labs/flux-1-schnell" selected>FLUX.1 Schnell • ₹0.25 ($0.003) / img</option>
+          <option value="pollinations-free">Pollinations AI • 100% Free (₹0.00)</option>
+          <option value="openai/dall-e-3">DALL-E 3 HD • ₹3.36 ($0.040) / img</option>
+          <option value="openai/dall-e-2">DALL-E 2 • ₹1.68 ($0.020) / img</option>
+        </select>
+        <div id="img-model-cost-badge" style="font-size: 11px; color: var(--accent-terracotta); margin-top: 4px; font-weight: 500;">Active: FLUX.1 Schnell • Est. ₹0.25 ($0.003)</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Image Prompt</label>
+        <textarea id="img-prompt-input" class="form-input" rows="3" placeholder="Describe the image in detail..."></textarea>
+      </div>
+      <div class="img-preview-box" id="img-preview-box">
+        <span style="color: var(--text-muted); font-size: 12px;">Image preview will render here</span>
+      </div>
+      <button class="primary-btn" id="generate-img-btn">Generate Image</button>
+      <button class="primary-btn" id="insert-img-btn" style="display: none; background-color: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-subtle);">Insert into Chat</button>
+    </div>
+  </div>
+
+  <!-- Modal: Export Chat -->
+  <div class="modal-overlay" id="export-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Export Conversation</h3>
+        <button class="modal-close-btn" title="Close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="6" y2="18"></line></svg>
+        </button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted);">Choose a format to export this conversation:</p>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <button class="primary-btn export-format-btn" onclick="window.afExportChat('markdown')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <span>Markdown (.md)</span>
+        </button>
+        <button class="primary-btn export-format-btn" onclick="window.afExportChat('json')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          <span>JSON (.json)</span>
+        </button>
+        <button class="primary-btn export-format-btn" onclick="window.afExportChat('html')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z"></path></svg>
+          <span>Formatted HTML (.html)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: API Budget Warning Dialog -->
+  <div class="modal-overlay" id="budget-warning-modal">
+    <div class="modal-card" style="max-width: 440px; text-align: center;">
+      <div style="font-size: 32px; margin-bottom: 8px;">⚠️</div>
+      <h3 class="modal-title" style="margin-bottom: 6px;">API Budget Alert</h3>
+      <p id="budget-warning-text" style="font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 16px;">
+        This request is estimated to exceed your set budget limit.
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <button type="button" class="primary-btn" id="budget-proceed-btn" style="background: var(--accent-terracotta);">Proceed Anyway</button>
+        <button type="button" class="primary-btn" id="budget-switch-free-btn" style="background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-subtle);">Switch to 100% Free Model</button>
+        <button type="button" class="action-pill-btn" id="budget-cancel-btn" style="padding: 10px; border-radius: 10px;">Cancel Request</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
