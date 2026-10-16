@@ -1,10 +1,10 @@
 /**
  * AgentsFlow AI - Standalone Client Engine (2026 Edition)
- * Copyright (C) 2026 Saad (@fearoki)
+ * Copyright (C) 2026 Saad (@fearoki). All Rights Reserved.
  *
- * Licensed under the GNU General Public License v3.0 (GNU GPLv3).
- * Commercial appropriation, closed-source re-distribution, or removal
- * of author notices is strictly prohibited under copyleft law.
+ * Strict Proprietary & Source-Available License.
+ * Unauthorized copying, modification, reverse engineering, redistribution,
+ * or commercial exploitation without prior written consent from Saad is strictly prohibited.
  *
  * Zero-server dependency: Direct client streaming, dynamic model discovery,
  * model capability auto-detection & tool unlocking, real-time TPS & cost tracking,
@@ -2272,13 +2272,13 @@
 
     // 15. Rich Roleplay, Typography & Formatting:
     // 15a. Spoilers: ||text||
-    formatted = formatted.replace(/\|\|(.*?)\|\|/g, '<span class="rp-spoiler" onclick="this.classList.toggle(\'revealed\')" title="Tap to reveal spoiler">$1</span>');
+    formatted = formatted.replace(/\|\|([\s\S]*?)\|\|/g, '<span class="rp-spoiler" onclick="this.classList.toggle(\'revealed\')" title="Tap to reveal spoiler">$1</span>');
 
     // 15b. Highlights: ==text==
-    formatted = formatted.replace(/==(.*?)==/g, '<mark class="rp-highlight">$1</mark>');
+    formatted = formatted.replace(/==([\s\S]*?)==/g, '<mark class="rp-highlight">$1</mark>');
 
     // 15c. Strikethrough: ~~text~~
-    formatted = formatted.replace(/~~(.*?)~~/g, '<del class="rp-strikethrough">$1</del>');
+    formatted = formatted.replace(/~~([\s\S]*?)~~/g, '<del class="rp-strikethrough">$1</del>');
 
     // 15d. Underline: <u>text</u>, &lt;u&gt;text&lt;/u&gt;, or ++text++
     formatted = formatted.replace(/(?:&lt;u&gt;|<u>|\+\+)([\s\S]*?)(?:&lt;\/u&gt;|<\/u>|\+\+)/gi, '<span class="rp-underline">$1</span>');
@@ -2287,17 +2287,17 @@
     formatted = formatted.replace(/\^([^\s\^]+)\^/g, '<sup>$1</sup>');
     formatted = formatted.replace(/~([^\s~]+)~/g, '<sub>$1</sub>');
 
-    // 15f. Bold-Italic: ***text*** or ___text___
-    formatted = formatted.replace(/\*\*\*([^\*\n]+)\*\*\*/g, '<strong><em>$1</em></strong>');
-    formatted = formatted.replace(/___([^_\n]+)___/g, '<strong><em>$1</em></strong>');
+    // 15f. Bold-Italic Roleplay Actions: ***text*** or ___text___
+    formatted = formatted.replace(/\*\*\*([^\*]+?)\*\*\*/g, '<strong class="rp-bold-action"><em class="rp-action">$1</em></strong>');
+    formatted = formatted.replace(/___([^_]+?)___/g, '<strong class="rp-bold-action"><em class="rp-action">$1</em></strong>');
 
     // 15g. Bold: **text** or __text__
-    formatted = formatted.replace(/\*\*([^\*\n]+)\*\*/g, '<strong>$1</strong>');
-    formatted = formatted.replace(/__([^_\n]+)__/g, '<strong>$1</strong>');
+    formatted = formatted.replace(/\*\*([^\*]+?)\*\*/g, '<strong>$1</strong>');
+    formatted = formatted.replace(/__([^_]+?)__/g, '<strong>$1</strong>');
 
     // 15h. Italic & Roleplay Actions: *action* or _action_
-    formatted = formatted.replace(/\*([^\*\n]+)\*/g, '<em class="rp-action">$1</em>');
-    formatted = formatted.replace(/(^|[\s\(\[])_([^_\n]+)_(?=[\s\)\],<>]|$)/g, '$1<em class="rp-action">$2</em>');
+    formatted = formatted.replace(/(?:^|(?<=[\s\(\[>\.,!?;:\-&]))\*([^\*\n]+?)\*(?=[^\*]|$)/g, '<em class="rp-action">$1</em>');
+    formatted = formatted.replace(/(?:^|(?<=[\s\(\[>\.,!?;:\-&]))_([^_\n]+?)_(?=[^_]|$)/g, '<em class="rp-action">$1</em>');
 
     // 16. Paragraph gaps & line breaks for prose
     formatted = formatted.replace(/\n\n+/g, '<div class="md-para-gap"></div>');
@@ -4569,6 +4569,12 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
     };
     els.saveParamsBtn.onclick = saveModelParameters;
 
+    const openAboutLicenseBtn = document.getElementById("open-about-license-btn");
+    const aboutLicenseModal = document.getElementById("about-license-modal");
+    if (openAboutLicenseBtn && aboutLicenseModal) {
+      openAboutLicenseBtn.onclick = () => openModal(aboutLicenseModal);
+    }
+
     // Model Selector & Dedicated Provider Hub
     els.modelPill.onclick = () => openModelSelector(false);
     if (els.modelQuickBtn) els.modelQuickBtn.onclick = () => openModelSelector(false);
@@ -4838,6 +4844,54 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
         if (els.sidebar && els.sidebar.classList.contains("open")) closeSidebar();
       }
     });
+
+    // Anti-Inspection: Disable right-click context menu outside text inputs
+    document.addEventListener("contextmenu", function (e) {
+      if (!e.target.closest("input, textarea")) {
+        e.preventDefault();
+        return false;
+      }
+    });
+
+    // Anti-Inspection: Block DevTools shortcuts (F12, Ctrl+Shift+I/J/C, Ctrl+U, Ctrl+S)
+    window.addEventListener("keydown", function (e) {
+      if (e.key === "F12" || e.keyCode === 123) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (
+        e.key === "I" || e.key === "i" ||
+        e.key === "J" || e.key === "j" ||
+        e.key === "C" || e.key === "c"
+      )) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "u" || e.key === "U")) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    }, true);
+
+    // Anti-Tampering: Disable dragging of app assets or UI chrome
+    document.addEventListener("dragstart", function (e) {
+      e.preventDefault();
+    });
+
+    // Legal Warning in DevTools Console
+    console.log(
+      "%cSTOP!\n%cAgentsFlow AI is proprietary software.\nCopyright (C) 2026 Saad (@fearoki). All Rights Reserved.\nUnauthorized inspection, modification, or reverse engineering is strictly prohibited.",
+      "color: #ef4444; font-size: 20px; font-weight: bold;",
+      "color: #9ca3af; font-size: 12px; line-height: 1.5;"
+    );
   }
 
   function adjustTextareaHeight() {

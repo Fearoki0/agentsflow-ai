@@ -1,11 +1,10 @@
 /*
  * AgentsFlow AI - Universal Mobile AI Platform
- * Copyright (C) 2026 Saad (@fearoki)
+ * Copyright (C) 2026 Saad (@fearoki). All Rights Reserved.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Strict Proprietary & Source-Available License.
+ * Unauthorized copying, modification, reverse engineering, redistribution,
+ * or commercial exploitation without prior written consent from Saad is strictly prohibited.
  */
 
 package com.agentsflow.chatbot;
@@ -131,6 +130,9 @@ public class MainActivity extends Activity {
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            WebView.setWebContentsDebuggingEnabled(false);
         }
 
         webView.setBackgroundColor(0xFF0D0D0F);

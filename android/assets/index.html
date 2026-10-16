@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <!--
   AgentsFlow AI - Universal Mobile AI Platform
-  Copyright (C) 2026 Saad (@fearoki)
-  Licensed under GNU General Public License v3.0 (GNU GPLv3).
+  Copyright (C) 2026 Saad (@fearoki). All Rights Reserved.
+  Strict Proprietary & Source-Available License. Unauthorized copying or modification prohibited.
 -->
 <html lang="en">
 <head>
@@ -267,7 +267,7 @@
           <span class="provider-presets-label">Fast Presets:</span>
           <div class="provider-presets-buttons">
             <button type="button" class="provider-preset-btn active" data-preset="openrouter" onclick="window.afSetProviderPreset('openrouter')">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z"></path></svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
               <span>OpenRouter</span>
             </button>
             <button type="button" class="provider-preset-btn" data-preset="groq" onclick="window.afSetProviderPreset('groq')">
@@ -565,6 +565,15 @@
         </div>
       </div>
 
+      <!-- About & Legal License Card -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 12px; margin-top: 10px; margin-bottom: 6px;">
+        <div>
+          <div style="font-size: 12px; font-weight: 600; color: var(--text-primary);">About & Legal License</div>
+          <div style="font-size: 11px; color: var(--text-muted);">Copyright (C) 2026 Saad (@fearoki) • All Rights Reserved</div>
+        </div>
+        <button type="button" class="action-pill-btn" id="open-about-license-btn" style="font-weight: 600;">View License</button>
+      </div>
+
       <div style="display: flex; gap: 8px; margin-top: 4px;">
         <button class="primary-btn" id="reset-params-btn" style="flex: 1; background-color: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-subtle);">Reset Defaults</button>
         <button class="primary-btn" id="save-params-btn" style="flex: 1;">Save Settings</button>
@@ -734,6 +743,68 @@
         <button type="button" class="primary-btn" id="budget-proceed-btn" style="background: var(--accent-terracotta);">Proceed Anyway</button>
         <button type="button" class="primary-btn" id="budget-switch-free-btn" style="background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-subtle);">Switch to 100% Free Model</button>
         <button type="button" class="action-pill-btn" id="budget-cancel-btn" style="padding: 10px; border-radius: 10px;">Cancel Request</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: About & Proprietary License -->
+  <div class="modal-overlay" id="about-license-modal">
+    <div class="modal-card" style="max-width: 520px; max-height: 85vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 34px; height: 34px; border-radius: 10px; background: rgba(200, 90, 23, 0.15); display: flex; align-items: center; justify-content: center; color: var(--accent-terracotta);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          </div>
+          <div>
+            <h3 class="modal-title">About AgentsFlow AI</h3>
+            <div style="font-size: 11px; color: var(--text-muted);">Version 1.0.0 • Native Client</div>
+          </div>
+        </div>
+        <button class="modal-close-btn" title="Close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="6" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div style="overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 12px; margin-top: 4px;">
+        <!-- Author Profile Card -->
+        <div style="padding: 12px 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 12px; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">Saad (@fearoki)</div>
+            <div style="font-size: 11px; color: var(--text-secondary);">Lead Architect & Software Creator</div>
+          </div>
+          <span style="font-size: 10px; padding: 3px 8px; border-radius: 6px; background: rgba(200, 90, 23, 0.15); color: var(--accent-terracotta); font-weight: 600; text-transform: uppercase;">All Rights Reserved</span>
+        </div>
+
+        <!-- Architecture Quick Badges -->
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+          <span class="action-pill-btn" style="padding: 4px 10px; font-size: 10px;">Direct Client Streaming</span>
+          <span class="action-pill-btn" style="padding: 4px 10px; font-size: 10px;">Zero Server Proxy</span>
+          <span class="action-pill-btn" style="padding: 4px 10px; font-size: 10px;">Reasoning Extraction</span>
+          <span class="action-pill-btn" style="padding: 4px 10px; font-size: 10px;">Private Local Storage</span>
+        </div>
+
+        <!-- Strict License Terms Box -->
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Proprietary License & Terms of Use:</div>
+          <div style="font-size: 11px; line-height: 1.6; color: var(--text-secondary); background: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 12px; max-height: 160px; overflow-y: auto; font-family: var(--font-mono); white-space: pre-wrap;">PROPRIETARY SOURCE-AVAILABLE LICENSE
+Copyright (C) 2026 Saad (@fearoki). All Rights Reserved.
+
+This software and source code are proprietary:
+1. NO UNAUTHORIZED COPYING, MIRRORING, OR REPACKAGING.
+2. NO MODIFICATION, TRANSLATION, OR CREATION OF DERIVATIVE WORKS.
+3. NO REDISTRIBUTION, SHARING, OR SUB-LICENSING.
+4. NO COMMERCIAL EXPLOITATION OR MONETIZATION WITHOUT PRIOR WRITTEN CONSENT FROM SAAD.
+5. NO REVERSE ENGINEERING, DECOMPILATION, OR SOURCE EXTRACTION.</div>
+        </div>
+
+        <!-- Security & Anti-Theft Notice -->
+        <div style="padding: 10px 12px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 10px; font-size: 11px; color: #fca5a5; line-height: 1.5;">
+          <strong>Security Notice:</strong> Active anti-tampering and inspection safeguards are enforced. Unauthorized modification or source extraction terminates use and will be prosecuted under intellectual property laws.
+        </div>
+      </div>
+
+      <div style="margin-top: 14px;">
+        <button type="button" class="primary-btn modal-close-btn" style="width: 100%;">Close</button>
       </div>
     </div>
   </div>

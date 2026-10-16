@@ -1,128 +1,70 @@
-# AgentsFlow AI — Autonomous Frontier Intelligence Platform & Native Android Client
+# AgentsFlow AI
 
-<div align="center">
+AgentsFlow AI is an independent, mobile-first AI client designed to run modern frontier models directly on your Android device without middlemen, cloud proxies, or subscription markups.
 
-![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)
-![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Web-orange?style=for-the-badge)
-![Author](https://img.shields.io/badge/Author-Saad%20(%40fearoki)-crimson?style=for-the-badge)
-![Status](https://img.shields.io/badge/Release-v2.0.0-emerald?style=for-the-badge)
-![Build](https://img.shields.io/badge/Build-Signed%20APK%20(v2%2Fv3)-brightgreen?style=for-the-badge)
-
-**Created & Engineered by Saad ([@fearoki](https://github.com/Fearoki))**  
-*Autonomous frontier AI platform with 100+ actionable workflows, universal multi-model discovery, multi-modal engines (Chat, Reasoning, Audio, Image, Video, OCR), Liquid Glass UI, roleplay typography, and zero-dependency offline runtime.*
-
-</div>
+I built this project because almost every mobile AI app right now is wrapped inside subscription paywalls or strips away essential developer features like reasoning tokens, custom system prompts, and client-side code execution. AgentsFlow AI connects directly from your phone to any model provider API—OpenAI, Anthropic, Google Gemini, Groq, OpenRouter, DeepSeek, or local Ollama instances—giving you full control over your keys, token usage, budgets, and capabilities.
 
 ---
 
-## 🚀 Key Highlights & Architectural Innovations
+## How It Works
 
-### 1. 🛡️ Universal Multi-Modal Engine & Dynamic Model Discovery
-- **Any-API Compatibility:** Connect to any OpenAI-compatible provider (OpenAI, Groq, OpenRouter, DeepSeek, Ollama, vLLM, LM Studio, or local servers).
-- **Live Model Probing:** Dynamically fetch, normalize, and categorize models directly from `/v1/models` in real time with automated capability detection (Reasoning, Vision, Audio TTS/STT, Image Generation, Video, and OCR).
-- **Exact Dual-Currency Pricing:** Displays genuine Input, Output, and Cache pricing for every individual model in both **USD ($)** and **INR (₹)** at live rates (~84 INR/USD), clearly indicating 100% Free models (₹0.00).
+### 1. Direct Client-to-Provider Streaming
+Most chatbot apps route your requests through their own cloud servers before sending them to the AI provider. AgentsFlow AI connects directly from your phone:
+- **Zero Third-Party Servers**: Prompts and API keys go straight from your device to the API endpoint over encrypted HTTPS.
+- **Real-Time Token Streamer**: As chunks arrive from Server-Sent Events (SSE), the app calculates real-time Tokens Per Second (TPS), token counts, and elapsed generation time.
+- **Instant Abort Control**: Tapping the Stop button immediately aborts the active stream and reader buffer without locking up the UI or wasting your tokens.
 
-### 2. 🧠 Chain-of-Thought Reasoning Accordion
-- **Strict User Message Isolation:** The thinking accordion is strictly confined to assistant responses—user prompts never display false thinking bars.
-- **Universal Reasoning Extraction:** Automatically extracts thoughts and intermediate calculations from DeepSeek R1 `<think>` tags, Claude 3.7 / Hermes `<reasoning>`, fenced thought blocks, and untagged step deductions (Mistral NeMo, LLaMA `[Step 1: ...] ... [Final Verified Answer]`).
-- **Interactive Inspection:** Real-time monospace character and token counter, pulsing live radar indicator, and smooth accordion toggle.
+### 2. Capability Auto-Detection
+Instead of showing generic buttons that break when a model doesn't support them, AgentsFlow dynamically checks the selected model's true capabilities:
+- **Reasoning Models (DeepSeek R1, Claude 3.7 Sonnet, o1)**: Automatically routes `<think>` blocks, Hermes tags, and internal deductions into a dedicated, collapsible **Thinking Process** drawer with monospace styling and character counters.
+- **Vision Models**: Enables camera and image attachment inputs only when the selected model actually supports image understanding.
+- **Coding Models**: Activates syntax highlighting, formatted tables, and an interactive client-side sandbox.
+- **Dedicated Multi-Modal Models**: Image generators (DALL-E, FLUX), speech-to-text (Whisper), and voice models are handled through dedicated interfaces so you never get bad-request errors from sending text to an image-only model.
 
-### 3. 🌐 Web Grounding & Rich Interactive Citations
-- **Source Citation Chips:** Plain link dumps like `(Source: https://...)` are transformed into interactive liquid glass pills featuring live favicons, domain tags, citation indices, and external link indicators.
-- **GitHub / Obsidian Callouts:** Beautiful glass cards for `> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, and `> [!CAUTION]`.
-- **Responsive Tables & Step Cards:** Markdown tables render with zebra striping and touch-responsive horizontal scrolling; multi-step answers render with distinct numbered milestone cards.
+### 3. Built-In Code Runner & Inspector
+When an AI writes code, you shouldn't have to copy-paste it into an external editor to test it.
+- Run HTML, CSS, JavaScript, and Python code directly inside the app.
+- Dual-tab view lets you easily switch between **Preview / Run Output** and **Source Code View**.
 
-### 4. 🎭 Roleplay & Creative Writing Typography
-- **Emote Actions:** Asterisk actions `*smiles warmly and steps forward*` render with soft, elegant typography.
-- **Bold-Italics & Rich Styling:** Full support for `***bold-italic***`, `**bold**`, `<u>underline</u>`, `~~strikethrough~~`, `^superscript^`, and `~subscript~`.
-- **Interactive Spoilers:** `||hidden spoiler||` renders with a frosted blur curtain that reveals content on tap.
-- **Text Highlighting:** `==highlighted clue==` formats with golden liquid glass marker styling.
-- **Preserved Punctuation:** Smart quotes, em dashes, ellipses, and unicode runes render cleanly without escaping artifacts.
+### 4. Roleplay & Creative Writing Typography
+Designed for roleplayers and story writers who need clear visual separation between actions, dialogue, and narration:
+- **Character Actions (`*action*`)**: Styled in an aesthetic, soft lavender italic tone that stands out clearly from spoken dialogue.
+- **Bold Actions (`***bold action***`)**: Formatted in high-contrast bold-italic typography with subtle illumination.
+- **Special Characters & Formatting**: Full support for spoilers (`||hidden||`), underlines (`<u>` / `++`), strikethroughs (`~~`), highlights (`==`), and subscript/superscript.
 
-### 5. ⚡ Real-Time TPS, Budget Controller & Instant Stream Stop
-- **Live Tokens Per Second (TPS):** Accurate client-side speed measurement during streaming.
-- **API Budget Controller:** Set custom spending limits in ₹ or $ with automatic pre-flight safety warnings to prevent unintended API billing.
-- **Instant Stream Stop:** The red Stop button immediately aborts the active stream, releases the network socket, restores the Send button, and finalizes message history.
+### 5. Strict API Budget Maintenance & Cost Tracking
+- Displays exact input, output, and cache pricing in both **USD ($)** and **Indian Rupees (₹)** for every model before you send a message.
+- Set a session budget limit in Settings. If a prompt or model is about to exceed your budget threshold, the app alerts you with a warning before consuming your balance.
+- Guaranteed model integrity: Image generation uses the exact model you selected—never secretly substituting expensive models behind your back.
 
----
-
-## 🛠️ Complete 100+ Actionable Feature Catalog
-
-| Domain | Commands & Workflows | Highlights |
-| :--- | :--- | :--- |
-| **Autonomous Goal & Planning** | `/goal`, `/plan`, `/boost`, `/decompose`, `/roadmap` | End-to-end execution loops, task milestones, structured sprint roadmaps |
-| **System Architecture & Cloud** | `/arch`, `/docker`, `/k8s`, `/db`, `/api`, `/observability`, `/infra` | Clean Architecture specs, Dockerfiles, K8s manifests, SQL schemas, Terraform |
-| **Software Engineering & Code** | `/code`, `/refactor`, `/review`, `/test`, `/debug`, `/audit`, `/regex` | Polyglot synthesis, static analysis, unit test suites, security vulnerability audit |
-| **Deep Reasoning & STEM** | `/think`, `/math`, `/proof`, `/logic`, `/stat`, `/algo`, `/physics` | LaTeX derivations, formal logic proofs, probability distributions, algorithmic analysis |
-| **Writing & Roleplay** | `/roleplay`, `/character`, `/creative`, `/screenplay`, `/tone` | Deep character sheets, narrative arcs, prose enhancement, dialog styling |
-| **Multi-Modal Generation** | `/image`, `/tts`, `/whisper`, `/video`, `/ocr`, `/vision` | FLUX / DALL-E studio, neural speech, voice dictation, document OCR |
+### 6. Liquid Glass UI
+Built with a 2026 Liquid Glass aesthetic featuring translucent frosted glass surfaces, specular rim lighting, responsive bottom sheets, and fluid iOS-style spring animations.
 
 ---
 
-## 📱 Mobile Architecture & Standalone Android APK
+## Direct Finalized APK
 
-AgentsFlow AI is bundled as a 100% self-contained Android application that runs locally from `file:///android_asset/` without requiring external Node.js, Termux servers, or Docker.
-
-### Building & Installing the Native APK
-
-```bash
-# 1. Run the automated 7-suite test suite
-bash scripts/test_all.sh
-
-# 2. Compile, DEX, package, and sign the native Android APK
-bash scripts/build_apk.sh
-
-# 3. Install on your Android device (via Termux)
-termux-open builds/agentsflow-ai.apk
-```
-
-- **Output APK:** `builds/agentsflow-ai.apk`
-- **Package Name:** `com.agentsflow.chatbot`
-- **Signing:** Android Signature Scheme v2 & v3 compliant
+A pre-built, production-signed native Android APK is ready to install:
+- **File:** `builds/agentsflow-ai.apk`
+- **Architecture:** Universal Android (Android 7.0 / API 24 through Android 15 / API 35)
+- **Signature:** Android Signature Scheme v2 & v3 compliant
 
 ---
 
-## 📂 Repository Structure
+## Author & Copyright
 
-```
-agentsflowW/
-├── android/
-│   ├── AndroidManifest.xml          # Native Android manifest
-│   ├── assets/
-│   │   ├── index.html               # Main standalone application shell
-│   │   ├── css/style.css            # AAA Liquid Glass design system & roleplay CSS
-│   │   └── js/app.js                # Core state engine, 100+ features & streaming
-│   ├── res/                         # Android application resources & launcher icons
-│   └── src/com/agentsflow/chatbot/  # Native Java WebView Activity
-├── builds/
-│   └── agentsflow-ai.apk            # Release-signed native Android APK
-├── scripts/
-│   ├── build_apk.sh                 # aapt2 + javac + d8 + apksigner pipeline
-│   ├── test_all.sh                  # Comprehensive automated test runner
-│   └── run_mobile.sh                # Mobile web server runner
-├── tests/
-│   ├── run_all.mjs                  # Master test runner (7 complete suites)
-│   ├── test_models.mjs              # Model registry & capability testing
-│   ├── test_local_store.mjs         # Zero-dependency local database tests
-│   ├── test_provider_registry.mjs   # Universal endpoint resolution tests
-│   ├── test_endpoints.mjs           # Multi-modal API contract tests
-│   ├── test_features_2026.mjs       # 100+ feature catalog verification
-│   ├── test_grounding_and_thinking.mjs # Grounding & thinking isolation tests
-│   └── test_rp_and_streaming.mjs    # Roleplay typography & stream completion tests
-├── LICENSE                          # GNU General Public License v3.0 (GPL-3.0)
-├── NOTICE                           # Intellectual property & attribution notice
-└── README.md                        # Documentation & project guide
-```
+**AgentsFlow AI** was created and engineered by **Saad** ([@fearoki](https://github.com/Fearoki0)).
+
+Copyright (C) 2026 Saad (@fearoki). All rights reserved.
 
 ---
 
-## ⚖️ License & Intellectual Property Protection
+## License & Usage Terms
 
-**Copyright (C) 2026 Saad ([@fearoki](https://github.com/Fearoki)). All rights reserved.**
+This repository and application are released under a **Strict Proprietary & Source-Available License**. 
 
-This program is free software: you can redistribute it and/or modify it under the terms of the **GNU General Public License, Version 3 (GPL-3.0)** as published by the Free Software Foundation.
+The source code is published exclusively for personal use, review, and transparency. **No one is permitted to copy, steal, fork, modify, redistribute, sublicense, or commercially exploit this source code, application, UI design, or branding in any form without explicit prior written permission from Saad.**
 
-### Anti-Theft & Copyleft Provisions
-- Any fork, redistribution, or derivative work **must** remain open-source under the exact same GPL-3.0 license.
-- Commercial or closed-source repackaging, stripping of Saad's author credits, or proprietary claims over this code are strictly prohibited by law.
-- See the [LICENSE](LICENSE) and [NOTICE](NOTICE) files for complete legal details.
+Any unauthorized reproduction, modification, distribution, or commercial use is strictly prohibited and constitutes copyright infringement under international intellectual property law.
+
+For permissions or business inquiries, contact Saad on GitHub: [@fearoki](https://github.com/Fearoki0).

@@ -60,10 +60,10 @@ const rpActionText = "*whispers softly* Greetings, adventurer.";
 const rpActionHtml = formatContent(rpActionText);
 assert(rpActionHtml.includes('<em class="rp-action">whispers softly</em>'), "Asterisks must format into rp-action");
 
-// 3b. Bold-Italic
+// 3b. Bold-Italic Roleplay Actions
 const boldItalicText = "***screams into the void***";
 const boldItalicHtml = formatContent(boldItalicText);
-assert(boldItalicHtml.includes('<strong><em>screams into the void</em></strong>'), "***text*** must format into strong em");
+assert(boldItalicHtml.includes('<strong class="rp-bold-action"><em class="rp-action">screams into the void</em></strong>'), "***text*** must format into rp-bold-action strong em");
 
 // 3c. Underline
 const underlineText = "<u>ancient grimoire</u> and ++secret seal++";
@@ -97,6 +97,7 @@ console.log("  ✓ Roleplay typography verified: asterisks, bold-italics, underl
 // --- TEST 4: Roleplay CSS Stylesheet Rules ---
 const requiredRpCss = [
   ".rp-action",
+  ".rp-bold-action",
   ".rp-underline",
   ".rp-strikethrough",
   ".rp-spoiler",

@@ -1,7 +1,7 @@
 /*
  * AgentsFlow AI - Liquid Glass Design System (iOS 18/28 Transparent)
- * Copyright (C) 2026 Saad (@fearoki)
- * Licensed under GNU General Public License v3.0 (GNU GPLv3).
+ * Copyright (C) 2026 Saad (@fearoki). All Rights Reserved.
+ * Strict Proprietary & Source-Available License. Unauthorized copying prohibited.
  */
 :root {
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -3180,20 +3180,37 @@ body:not(.dark) .citation-chip {
    ======================================================== */
 .rp-action {
   font-style: italic;
-  color: var(--text-primary);
-  opacity: 0.94;
-  letter-spacing: 0.01em;
+  color: #a5b4fc; /* Ethereal soft lavender for distinct roleplay actions in dark mode */
+  letter-spacing: 0.015em;
+  text-shadow: 0 0 12px rgba(165, 180, 252, 0.15);
+  transition: color 0.2s ease;
+}
+
+body:not(.dark) .rp-action {
+  color: #4f46e5; /* Deep iris / royal indigo for light mode */
+  text-shadow: none;
+}
+
+.rp-bold-action {
+  font-weight: 700;
+  color: #c7d2fe !important;
+  text-shadow: 0 0 14px rgba(199, 210, 254, 0.25);
+}
+
+body:not(.dark) .rp-bold-action {
+  color: #3730a3 !important;
 }
 
 .rp-underline {
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 1.5px;
+  text-decoration-color: var(--accent-terracotta);
 }
 
 .rp-strikethrough {
   text-decoration: line-through;
-  opacity: 0.7;
+  opacity: 0.65;
 }
 
 .rp-spoiler {
@@ -3230,6 +3247,19 @@ body:not(.dark) .citation-chip {
 body.dark .rp-highlight {
   background: rgba(245, 158, 11, 0.28);
   border-bottom-color: rgba(245, 158, 11, 0.65);
+}
+
+/* Anti-Tampering & UI Chrome Protection */
+body, header, aside, .modal-card, button, .toolbar, .action-pill-btn, .header-bar {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Ensure message response content & code blocks remain selectable & copyable */
+.message-bubble, .code-block-content, .thinking-body, input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .md-para-gap {
