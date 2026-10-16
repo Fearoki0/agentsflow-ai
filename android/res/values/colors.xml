@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background_obsidian">#131316</color>
+    <color name="surface_obsidian">#1b1b1f</color>
+    <color name="accent_terracotta">#d97706</color>
+    <color name="text_primary">#f4f4f5</color>
+    <color name="text_muted">#71717a</color>
+</resources>
