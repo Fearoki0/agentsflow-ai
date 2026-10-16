@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_obsidian">
+
+    <WebView
+        android:id="@+id/webview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
+    <!-- 2026 Obsidian Matte Loading & Connection Screen -->
+    <LinearLayout
+        android:id="@+id/loading_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="28dp"
+        android:background="@color/background_obsidian"
+        android:visibility="visible">
+
+        <!-- App Icon -->
+        <ImageView
+            android:id="@+id/app_logo"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:src="@drawable/ic_launcher"
+            android:contentDescription="@string/app_name" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/app_name"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <ProgressBar
+            android:id="@+id/progress_bar"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginTop="24dp"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/accent_terracotta" />
+
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/loading"
+            android:textColor="@color/text_muted"
+            android:textSize="13sp"
+            android:lineSpacingExtra="4dp"
+            android:gravity="center" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/retry_button"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:text="@string/retry"
+                android:textColor="#ffffff"
+                android:textSize="12sp"
+                android:backgroundTint="@color/accent_terracotta" />
+
+            <Button
+                android:id="@+id/edit_url_button"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginStart="10dp"
+                android:text="Server URL"
+                android:textColor="@color/text_primary"
+                android:textSize="12sp"
+                android:backgroundTint="@color/surface_obsidian" />
+        </LinearLayout>
+    </LinearLayout>
+</RelativeLayout>
