@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#131316"
+        android:pathData="M0,0h108v108h-108z" />
+    <path
+        android:fillColor="#1b1b1f"
+        android:pathData="M54,16 C33.013,16 16,33.013 16,54 C16,74.987 33.013,92 54,92 C74.987,92 92,74.987 92,54 C92,33.013 74.987,16 54,16 Z" />
+    <!-- AI Brain/Chat Core -->
+    <path
+        android:fillColor="#d97706"
+        android:pathData="M54,32 C41.85,32 32,41.85 32,54 C32,59.3 33.87,64.15 37,68 L34,78 L45,75 C47.7,76.3 50.75,77 54,77 C66.15,77 76,67.15 76,54 C76,41.85 66.15,32 54,32 Z" />
+    <!-- Eyes -->
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M46,52 A4,4 0 1,1 46,51.99 Z M62,52 A4,4 0 1,1 62,51.99 Z" />
+</vector>
