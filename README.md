@@ -16,7 +16,7 @@ Most chatbot apps route your requests through their own cloud servers before sen
 
 ### 2. Capability Auto-Detection
 Instead of showing generic buttons that break when a model doesn't support them, AgentsFlow dynamically checks the selected model's true capabilities:
-- **Reasoning Models (DeepSeek R1, Claude 3.7 Sonnet, o1)**: Automatically routes `<think>` blocks, Hermes tags, and internal deductions into a dedicated, collapsible **Thinking Process** drawer with monospace styling and character counters.
+- **Reasoning Models: Automatically routes `<think>` blocks, Hermes tags, and internal deductions into a dedicated, collapsible **Thinking Process** drawer with monospace styling and character counters.
 - **Vision Models**: Enables camera and image attachment inputs only when the selected model actually supports image understanding.
 - **Coding Models**: Activates syntax highlighting, formatted tables, and an interactive client-side sandbox.
 - **Dedicated Multi-Modal Models**: Image generators (DALL-E, FLUX), speech-to-text (Whisper), and voice models are handled through dedicated interfaces so you never get bad-request errors from sending text to an image-only model.
