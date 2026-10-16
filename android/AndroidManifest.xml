@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  AgentsFlow AI - Universal Mobile AI Platform
+  Copyright (C) 2026 Saad (@fearoki)
+  Licensed under GNU General Public License v3.0 (GNU GPLv3).
+-->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.agentsflow.chatbot"
     android:versionCode="1"
