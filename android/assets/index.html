@@ -304,6 +304,7 @@
             </label>
             <div style="display: flex; gap: 6px;">
               <input type="password" id="model-modal-key-input" class="form-input" placeholder="Enter API Key (sk-...)" style="flex: 1;">
+              <button type="button" class="action-pill-btn" id="clear-api-key-btn" title="Clear and remove saved API Key" style="padding: 0 10px; color: #ef4444; font-size: 11px;">Clear</button>
               <button type="button" class="action-pill-btn" id="toggle-key-visibility-btn" title="Toggle Show/Hide" style="padding: 0 12px;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
               </button>
@@ -572,6 +573,14 @@
           <div style="font-size: 11px; color: var(--text-muted);">Copyright (C) 2026 Saad (@fearoki) • All Rights Reserved</div>
         </div>
         <button type="button" class="action-pill-btn" id="open-about-license-btn" style="font-weight: 600;">View License</button>
+      <!-- Security & App Storage Reset Card -->
+      <div style="padding: 12px; background: rgba(239, 68, 68, 0.04); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; margin-top: 8px; margin-bottom: 8px;">
+        <div style="font-size: 12px; font-weight: 600; color: #fca5a5; margin-bottom: 2px;">Security & App Storage Controls</div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Your API keys and conversations reside solely on your device. Wipe storage anytime:</div>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="action-pill-btn" id="settings-clear-key-btn" style="flex: 1; padding: 7px; color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); font-size: 11px;">Wipe Stored API Key</button>
+          <button type="button" class="action-pill-btn" id="settings-factory-reset-btn" style="flex: 1; padding: 7px; color: #ef4444; border-color: rgba(239, 68, 68, 0.4); font-size: 11px; font-weight: 600;">Factory Reset (Wipe All)</button>
+        </div>
       </div>
 
       <div style="display: flex; gap: 8px; margin-top: 4px;">

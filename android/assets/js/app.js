@@ -3135,6 +3135,24 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
     probeModelsFromUrl(state.providerUrl, state.apiKey);
   }
 
+  function clearStoredApiKey() {
+    state.apiKey = "";
+    localStorage.removeItem("af_api_key");
+    if (els.modelModalKeyInput) els.modelModalKeyInput.value = "";
+    updateProviderBadgeDisplay();
+    showToastBadge("API Key removed from device storage");
+  }
+
+  function factoryResetStorage() {
+    if (confirm("Are you sure you want to completely wipe all local chats, API keys, and settings? This resets the app to a clean state.")) {
+      localStorage.clear();
+      showToastBadge("Storage wiped. Resetting app...");
+      setTimeout(() => {
+        window.location.reload();
+      }, 350);
+    }
+  }
+
   function updateProviderBadgeDisplay() {
     if (els.currentProviderBadgeName) els.currentProviderBadgeName.textContent = `Provider: ${state.providerName}`;
     if (els.currentProviderBadgeUrl) els.currentProviderBadgeUrl.textContent = `(${state.providerUrl})`;
@@ -4596,6 +4614,21 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
     const aboutLicenseModal = document.getElementById("about-license-modal");
     if (openAboutLicenseBtn && aboutLicenseModal) {
       openAboutLicenseBtn.onclick = () => openModal(aboutLicenseModal);
+    }
+
+    const clearApiKeyBtn = document.getElementById("clear-api-key-btn");
+    if (clearApiKeyBtn) {
+      clearApiKeyBtn.onclick = clearStoredApiKey;
+    }
+
+    const settingsClearKeyBtn = document.getElementById("settings-clear-key-btn");
+    if (settingsClearKeyBtn) {
+      settingsClearKeyBtn.onclick = clearStoredApiKey;
+    }
+
+    const settingsFactoryResetBtn = document.getElementById("settings-factory-reset-btn");
+    if (settingsFactoryResetBtn) {
+      settingsFactoryResetBtn.onclick = factoryResetStorage;
     }
 
     // Model Selector & Dedicated Provider Hub
