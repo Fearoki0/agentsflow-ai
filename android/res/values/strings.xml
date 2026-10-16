@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AgentsFlow AI</string>
+    <string name="loading">Connecting to AgentsFlow AI...</string>
+    <string name="retry">Retry Connection</string>
+    <string name="server_url">http://127.0.0.1:3000</string>
+    <string name="permission_mic_rationale">AgentsFlow requires microphone access for real-time voice dictation.</string>
+</resources>
