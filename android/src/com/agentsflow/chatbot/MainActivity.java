@@ -33,6 +33,15 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.DownloadListener;
+import android.webkit.JavascriptInterface;
+import android.app.DownloadManager;
+import android.os.Environment;
+import android.util.Base64;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.util.ArrayList;
+import java.util.List;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -138,6 +147,37 @@ public class MainActivity extends Activity {
         webView.setBackgroundColor(0xFF0D0D0F);
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
+        // Native Android Bridge for reliable media download & storage access
+        webView.addJavascriptInterface(new WebAppInterface(), "AndroidBridge");
+
+        // Download listener for audio, image, video and file downloads
+        webView.setDownloadListener(new DownloadListener() {
+            @Override
+            public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
+                try {
+                    if (url != null && url.startsWith("data:")) {
+                        saveDataUriToFile(url, "agentsflow_download_" + System.currentTimeMillis());
+                        return;
+                    }
+                    DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+                    if (mimeType != null) {
+                        request.setMimeType(mimeType);
+                    }
+                    request.allowScanningByMediaScanner();
+                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                    String fileName = android.webkit.URLUtil.guessFileName(url, contentDisposition, mimeType);
+                    request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+                    DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                    if (dm != null) {
+                        dm.enqueue(request);
+                        Toast.makeText(MainActivity.this, "Downloading " + fileName + "...", Toast.LENGTH_SHORT).show();
+                    }
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, "Download: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
@@ -189,20 +229,36 @@ public class MainActivity extends Activity {
                 });
             }
 
-            // File Chooser for image and document attachments
+            // File Chooser for image, document, and OCR vision attachments
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
                 if (MainActivity.this.filePathCallback != null) {
                     MainActivity.this.filePathCallback.onReceiveValue(null);
+                    MainActivity.this.filePathCallback = null;
                 }
                 MainActivity.this.filePathCallback = filePathCallback;
 
-                Intent intent = fileChooserParams.createIntent();
+                Intent intent = null;
+                if (fileChooserParams != null) {
+                    try {
+                        intent = fileChooserParams.createIntent();
+                    } catch (Exception ignored) {}
+                }
+                if (intent == null) {
+                    intent = new Intent(Intent.ACTION_GET_CONTENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("image/*");
+                }
+
                 try {
-                    startActivityForResult(intent, FILE_CHOOSER_REQUEST_CODE);
+                    Intent chooser = Intent.createChooser(intent, "Choose Image or Document");
+                    startActivityForResult(chooser, FILE_CHOOSER_REQUEST_CODE);
                 } catch (Exception e) {
-                    MainActivity.this.filePathCallback = null;
-                    Toast.makeText(MainActivity.this, "Cannot open file chooser", Toast.LENGTH_SHORT).show();
+                    if (MainActivity.this.filePathCallback != null) {
+                        MainActivity.this.filePathCallback.onReceiveValue(null);
+                        MainActivity.this.filePathCallback = null;
+                    }
+                    Toast.makeText(MainActivity.this, "Cannot open file chooser: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     return false;
                 }
                 return true;
@@ -284,12 +340,27 @@ public class MainActivity extends Activity {
 
     private void checkPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            List<String> needed = new ArrayList<String>();
             if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{
-                        Manifest.permission.RECORD_AUDIO,
-                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE
-                }, PERMISSION_REQUEST_CODE);
+                needed.add(Manifest.permission.RECORD_AUDIO);
+            }
+            if (Build.VERSION.SDK_INT >= 33) {
+                if (checkSelfPermission("android.permission.READ_MEDIA_IMAGES") != PackageManager.PERMISSION_GRANTED) {
+                    needed.add("android.permission.READ_MEDIA_IMAGES");
+                }
+                if (checkSelfPermission("android.permission.READ_MEDIA_VIDEO") != PackageManager.PERMISSION_GRANTED) {
+                    needed.add("android.permission.READ_MEDIA_VIDEO");
+                }
+            } else {
+                if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                    needed.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+                }
+                if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                    needed.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                }
+            }
+            if (!needed.isEmpty()) {
+                requestPermissions(needed.toArray(new String[0]), PERMISSION_REQUEST_CODE);
             }
         }
     }
@@ -300,9 +371,18 @@ public class MainActivity extends Activity {
             if (filePathCallback != null) {
                 Uri[] results = null;
                 if (resultCode == Activity.RESULT_OK && data != null) {
-                    String dataString = data.getDataString();
-                    if (dataString != null) {
-                        results = new Uri[]{Uri.parse(dataString)};
+                    if (data.getData() != null) {
+                        results = new Uri[]{data.getData()};
+                    } else if (data.getDataString() != null) {
+                        results = new Uri[]{Uri.parse(data.getDataString())};
+                    } else if (data.getClipData() != null) {
+                        int count = data.getClipData().getItemCount();
+                        if (count > 0) {
+                            results = new Uri[count];
+                            for (int i = 0; i < count; i++) {
+                                results[i] = data.getClipData().getItemAt(i).getUri();
+                            }
+                        }
                     }
                 }
                 filePathCallback.onReceiveValue(results);
@@ -313,13 +393,105 @@ public class MainActivity extends Activity {
         }
     }
 
+    // Native Bridge interface exposed to JavaScript
+    public class WebAppInterface {
+        @JavascriptInterface
+        public boolean isAndroidApp() {
+            return true;
+        }
+
+        @JavascriptInterface
+        public void downloadBase64File(final String base64Data, final String filename, final String mimeType) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    saveBase64ToDownloads(base64Data, filename, mimeType);
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void saveDataUriToFile(final String dataUri, final String defaultName) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    MainActivity.this.saveDataUriToFile(dataUri, defaultName);
+                }
+            });
+        }
+    }
+
+    private void saveDataUriToFile(String dataUri, String defaultName) {
+        try {
+            int commaIdx = dataUri.indexOf(",");
+            if (commaIdx == -1) return;
+            String meta = dataUri.substring(0, commaIdx);
+            String base64 = dataUri.substring(commaIdx + 1);
+            String mimeType = "image/png";
+            String ext = ".png";
+            if (meta.contains("image/jpeg") || meta.contains("image/jpg")) {
+                mimeType = "image/jpeg";
+                ext = ".jpg";
+            } else if (meta.contains("video/mp4")) {
+                mimeType = "video/mp4";
+                ext = ".mp4";
+            } else if (meta.contains("audio/")) {
+                mimeType = "audio/mp3";
+                ext = ".mp3";
+            }
+            saveBase64ToDownloads(base64, defaultName + ext, mimeType);
+        } catch (Exception e) {
+            Toast.makeText(MainActivity.this, "Save error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void saveBase64ToDownloads(String base64Data, String filename, String mimeType) {
+        try {
+            String clean = base64Data;
+            int commaIdx = clean.indexOf(",");
+            if (commaIdx != -1) {
+                clean = clean.substring(commaIdx + 1);
+            }
+            byte[] bytes = Base64.decode(clean, Base64.DEFAULT);
+
+            File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+            File dest = new File(dir, filename);
+            FileOutputStream fos = new FileOutputStream(dest);
+            fos.write(bytes);
+            fos.flush();
+            fos.close();
+
+            // Refresh Android Media Scanner so it appears instantly in Gallery/Downloads
+            sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(dest)));
+            Toast.makeText(MainActivity.this, "Saved to Downloads: " + filename, Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(MainActivity.this, "Save error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
     @Override
     public void onBackPressed() {
-        if (webView.getVisibility() == View.VISIBLE && webView.canGoBack()) {
-            webView.goBack();
-        } else {
-            super.onBackPressed();
+        if (webView != null && webView.getVisibility() == View.VISIBLE) {
+            webView.evaluateJavascript("typeof window.afHandleAndroidBack === 'function' ? window.afHandleAndroidBack() : false;", new ValueCallback<String>() {
+                @Override
+                public void onReceiveValue(String value) {
+                    if ("true".equals(value)) {
+                        // Modal or sidebar was dismissed cleanly
+                        return;
+                    }
+                    if (webView.canGoBack()) {
+                        webView.goBack();
+                    } else {
+                        MainActivity.super.onBackPressed();
+                    }
+                }
+            });
+            return;
         }
+        super.onBackPressed();
     }
 
     @Override

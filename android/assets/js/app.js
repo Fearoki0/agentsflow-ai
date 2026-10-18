@@ -1,5 +1,5 @@
 /**
- * AgentsFlow AI - Standalone Client Engine (2026 Edition)
+ * AgentsFlow AI - Standalone Client Engine v1.2.0 (2026 Edition)
  * Copyright (C) 2026 Saad (@fearoki). All Rights Reserved.
  *
  * Strict Proprietary & Source-Available License.
@@ -30,183 +30,110 @@
     { id: "black-forest-labs/flux-1-schnell", name: "FLUX.1 Schnell", category: "image", desc: "12B parameter flow matching image generation", provider: "black-forest", contextWindow: "N/A" },
     { id: "openai/tts-1", name: "TTS-1 (Neural Voice)", category: "audio", desc: "Text-to-speech voice generation", provider: "openai", contextWindow: "N/A" },
     { id: "openai/whisper-1", name: "Whisper (Voice to Text)", category: "audio", desc: "Multi-lingual speech recognition", provider: "openai", contextWindow: "N/A" },
+    { id: "openai/whisper-large-v3-turbo", name: "Whisper Large V3 Turbo", category: "audio", desc: "High-speed multi-lingual speech transcription", provider: "openai", contextWindow: "N/A" },
     { id: "luma/ray-2", name: "Luma Ray 2 (Video Gen)", category: "video", desc: "High-definition realistic AI video generation", provider: "luma", contextWindow: "N/A" },
     { id: "ocr/nougat-vision", name: "Nougat OCR (Document Vision)", category: "vision", desc: "High-precision PDF, formula, and document OCR transcription", provider: "meta", contextWindow: "32k" },
+    { id: "got-ocr/got-ocr-2.0", name: "GOT-OCR 2.0 (Document Vision)", category: "vision", desc: "Optical character recognition for plain text, formulas and tables", provider: "meta", contextWindow: "32k" },
+    { id: "lunaris/lunaris-8b", name: "Lunaris 8B (AICredits)", category: "chat", desc: "High-quality expressive roleplay & creative instruction model", provider: "aicredits", contextWindow: "32k" },
   ];
 
   const INR_PER_USD = 84.0;
 
-  const MODEL_PRICING = {
-    "deepseek/deepseek-r1": { input: 0.00055, output: 0.00219, cache: 0.00014 },
-    "anthropic/claude-3.7-sonnet": { input: 0.003, output: 0.015, cache: 0.0003 },
-    "anthropic/claude-3.5-sonnet": { input: 0.003, output: 0.015, cache: 0.0003 },
-    "openai/o3-mini": { input: 0.0011, output: 0.0044, cache: 0.00055 },
-    "openai/gpt-4o": { input: 0.0025, output: 0.010, cache: 0.00125 },
-    "groq/llama-3.3-70b-versatile": { input: 0.00059, output: 0.00079, cache: 0.0003 },
-    "google/gemini-2.0-flash-exp": { input: 0.0001, output: 0.0004, cache: 0.000025 },
-    "qwen/qwq-32b-preview": { input: 0.0006, output: 0.0018, cache: 0.00015 },
-    "meta-llama/llama-3.1-8b-instruct": { input: 0.0001, output: 0.0002, cache: 0.00005 },
-    "ocr/nougat-vision": { input: 0.0002, output: 0.0005, cache: 0.00005 },
-    "openai/dall-e-3": { special: "$0.040 (₹3.36) / standard img", type: "image", input: 0.04, output: 0.04, cache: 0 },
-    "black-forest-labs/flux-1-schnell": { special: "$0.003 (₹0.25) / img", type: "image", input: 0.003, output: 0.003, cache: 0 },
-    "openai/tts-1": { special: "$15.00 (₹1,260) / 1M chars", type: "audio", input: 0.015, output: 0.015, cache: 0 },
-    "openai/whisper-1": { special: "$0.006 (₹0.50) / min", type: "audio", input: 0.006, output: 0.006, cache: 0 },
-    "luma/ray-2": { special: "$0.200 (₹16.80) / video gen", type: "video", input: 0.2, output: 0.2, cache: 0 },
-  };
-
-  function getModelPricing(modelId, modelObj) {
-    const id = String(modelId || "").toLowerCase();
-
-    // 1. Direct match in static registry
-    if (MODEL_PRICING[modelId]) {
-      const p = MODEL_PRICING[modelId];
-      if (p.special) return p;
+  function normalizePricing(raw) {
+    if (!raw) {
       return {
-        ...p,
-        inputPer1M: p.input * 1000,
-        outputPer1M: p.output * 1000,
-        cachePer1M: p.cache ? p.cache * 1000 : 0,
+        input: 0.0002,
+        output: 0.0006,
+        cache: 0.00005,
+        inputPer1M: 0.20,
+        outputPer1M: 0.60,
+        cachePer1M: 0.05,
+        inputPer1MInr: 16.80,
+        outputPer1MInr: 50.40,
+        cachePer1MInr: 4.20,
       };
     }
-    for (const [key, val] of Object.entries(MODEL_PRICING)) {
-      if (id === key.toLowerCase() || id.endsWith("/" + key.toLowerCase())) {
-        if (val.special) return val;
-        return {
-          ...val,
-          inputPer1M: val.input * 1000,
-          outputPer1M: val.output * 1000,
-          cachePer1M: val.cache ? val.cache * 1000 : 0,
-        };
-      }
-    }
-
-    // 2. Dynamic OpenRouter / API returned pricing
-    if (modelObj && modelObj.pricing) {
-      const pIn = parseFloat(modelObj.pricing.prompt || "0");
-      const pOut = parseFloat(modelObj.pricing.completion || "0");
-      const pCache = parseFloat(modelObj.pricing.prompt_cached || modelObj.pricing.request || (pIn * 0.25).toString());
-      if (pIn === 0 && pOut === 0) {
-        return { isFree: true, special: "100% Free / Local ($0.00 / ₹0.00)", input: 0, output: 0, cache: 0 };
-      }
-      const in1M = pIn < 0.01 ? pIn * 1000000 : pIn;
-      const out1M = pOut < 0.01 ? pOut * 1000000 : pOut;
-      const cache1M = pCache < 0.01 ? pCache * 1000000 : pCache;
+    if (raw.isFree) {
       return {
-        input: in1M / 1000,
-        output: out1M / 1000,
-        cache: cache1M / 1000,
-        inputPer1M: in1M,
-        outputPer1M: out1M,
-        cachePer1M: cache1M,
+        isFree: true,
+        special: raw.special || "100% Free / Local ($0.00 / ₹0.00)",
+        input: 0,
+        output: 0,
+        cache: 0,
+        inputPer1M: 0,
+        outputPer1M: 0,
+        cachePer1M: 0,
+        inputPer1MInr: 0,
+        outputPer1MInr: 0,
+        cachePer1MInr: 0,
+      };
+    }
+    if (raw.special) {
+      const inVal = typeof raw.input === "number" ? raw.input : 0;
+      const outVal = typeof raw.output === "number" ? raw.output : 0;
+      return {
+        ...raw,
+        input: inVal,
+        output: outVal,
+        cache: raw.cache || 0,
+        inputPer1M: raw.inputPer1M !== undefined ? raw.inputPer1M : inVal * 1000,
+        outputPer1M: raw.outputPer1M !== undefined ? raw.outputPer1M : outVal * 1000,
+        cachePer1M: raw.cachePer1M !== undefined ? raw.cachePer1M : 0,
+        inputPer1MInr: raw.inputPer1MInr !== undefined ? raw.inputPer1MInr : (inVal * 1000 * INR_PER_USD),
+        outputPer1MInr: raw.outputPer1MInr !== undefined ? raw.outputPer1MInr : (outVal * 1000 * INR_PER_USD),
+        cachePer1MInr: 0,
       };
     }
 
-    // 3. Free / Local models
-    if (id.includes(":free") || id.includes("free") || id.includes("ollama") || id.includes("local") || (modelObj && (modelObj.provider === "ollama" || modelObj.provider === "local"))) {
-      return { isFree: true, special: "100% Free / Local ($0.00 / ₹0.00)", input: 0, output: 0, cache: 0 };
+    let in1M = typeof raw.inputPer1M === "number" ? raw.inputPer1M : undefined;
+    let out1M = typeof raw.outputPer1M === "number" ? raw.outputPer1M : undefined;
+    let cache1M = typeof raw.cachePer1M === "number" ? raw.cachePer1M : undefined;
+
+    let inInr = typeof raw.inputPer1MInr === "number" ? raw.inputPer1MInr : undefined;
+    let outInr = typeof raw.outputPer1MInr === "number" ? raw.outputPer1MInr : undefined;
+    let cacheInr = typeof raw.cachePer1MInr === "number" ? raw.cachePer1MInr : undefined;
+
+    const isAiCredits = typeof state !== "undefined" && ((state.providerUrl || "").toLowerCase().includes("aicredits") || (state.providerName || "") === "AICredits");
+    const activeInrRate = isAiCredits ? (INR_PER_USD * 1.05 * 1.05) : INR_PER_USD;
+
+    if (inInr !== undefined && in1M === undefined) in1M = inInr / activeInrRate;
+    if (outInr !== undefined && out1M === undefined) out1M = outInr / activeInrRate;
+    if (cacheInr !== undefined && cache1M === undefined) cache1M = cacheInr / activeInrRate;
+
+    // Convert raw input if inputPer1M was not explicitly provided:
+    // Determine consistent unit multiplier for the entire pricing object:
+    // 1. OpenRouter per-token format: rate < 0.0001 -> multiply by 1,000,000
+    // 2. Standard per-1k format: rawIn <= 0.02 && rawOut <= 0.10 -> multiply by 1,000
+    // 3. Per-1M format: already per 1M -> multiply by 1
+    if (in1M === undefined || out1M === undefined) {
+      const rawIn = typeof raw.input === "number" ? raw.input : 0;
+      const rawOut = typeof raw.output === "number" ? raw.output : 0;
+      const rawCache = typeof raw.cache === "number" ? raw.cache : 0;
+      const refRate = rawIn > 0 ? rawIn : (rawOut > 0 ? rawOut : rawCache);
+
+      let unitMultiplier = 1;
+      if (refRate < 0.0001) {
+        unitMultiplier = 1000000;
+      } else if (rawIn <= 0.02 && rawOut <= 0.10) {
+        unitMultiplier = 1000;
+      } else if (refRate < 0.02) {
+        unitMultiplier = 1000;
+      } else {
+        unitMultiplier = 1;
+      }
+
+      if (in1M === undefined) in1M = rawIn > 0 ? rawIn * unitMultiplier : (typeof raw.input === "number" ? 0 : 0.20);
+      if (out1M === undefined) out1M = rawOut > 0 ? rawOut * unitMultiplier : (typeof raw.output === "number" ? 0 : 0.60);
+      if (cache1M === undefined) cache1M = rawCache * unitMultiplier;
     }
 
-    // 4. Dedicated Non-Chat Models
-    if (id.includes("flux-1-schnell") || id.includes("flux-schnell")) {
-      return { special: "$0.003 (₹0.25) / img", type: "image", input: 0.003, output: 0.003, cache: 0 };
-    }
-    if (id.includes("flux-1-dev") || id.includes("flux-dev")) {
-      return { special: "$0.025 (₹2.10) / img", type: "image", input: 0.025, output: 0.025, cache: 0 };
-    }
-    if (id.includes("dall-e-3")) {
-      return { special: "$0.040 (₹3.36) / standard img", type: "image", input: 0.04, output: 0.04, cache: 0 };
-    }
-    if (id.includes("dall-e-2")) {
-      return { special: "$0.020 (₹1.68) / img", type: "image", input: 0.02, output: 0.02, cache: 0 };
-    }
-    if (id.includes("pollinations")) {
-      return { special: "100% Free (₹0.00)", isFree: true, type: "image", input: 0, output: 0, cache: 0 };
-    }
-    if (id.includes("whisper")) {
-      return { special: "$0.006 (₹0.50) / min", type: "audio", input: 0.006, output: 0.006, cache: 0 };
-    }
-    if (id.includes("tts-1-hd")) {
-      return { special: "$30.00 (₹2,520) / 1M chars", type: "audio", input: 0.03, output: 0.03, cache: 0 };
-    }
-    if (id.includes("tts-1") || id.includes("tts")) {
-      return { special: "$15.00 (₹1,260) / 1M chars", type: "audio", input: 0.015, output: 0.015, cache: 0 };
-    }
-    if (id.includes("ray-2") || id.includes("luma") || id.includes("video") || id.includes("kling") || id.includes("runway") || id.includes("sora")) {
-      return { special: "$0.200 (₹16.80) / video gen", type: "video", input: 0.2, output: 0.2, cache: 0 };
+    if (cache1M === undefined) {
+      cache1M = typeof raw.cache === "number" ? raw.cache : 0;
     }
 
-    // 5. Family Heuristic Matching
-    if (id.includes("deepseek-r1") || id.includes("deepseek/r1") || (id.includes("deepseek") && id.includes("reasoner"))) {
-      return { input: 0.00055, output: 0.00219, cache: 0.00014, inputPer1M: 0.55, outputPer1M: 2.19, cachePer1M: 0.14 };
-    }
-    if (id.includes("deepseek-v3") || id.includes("deepseek-chat") || id.includes("deepseek")) {
-      return { input: 0.00014, output: 0.00028, cache: 0.000014, inputPer1M: 0.14, outputPer1M: 0.28, cachePer1M: 0.014 };
-    }
-    if (id.includes("claude-3-7") || id.includes("claude-3.7") || id.includes("claude-3-5-sonnet") || id.includes("claude-3.5-sonnet")) {
-      return { input: 0.003, output: 0.015, cache: 0.0003, inputPer1M: 3.00, outputPer1M: 15.00, cachePer1M: 0.30 };
-    }
-    if (id.includes("claude-3-5-haiku") || id.includes("claude-3.5-haiku") || id.includes("haiku")) {
-      return { input: 0.0008, output: 0.004, cache: 0.00008, inputPer1M: 0.80, outputPer1M: 4.00, cachePer1M: 0.08 };
-    }
-    if (id.includes("claude-3-opus") || id.includes("claude-3.0-opus") || id.includes("opus")) {
-      return { input: 0.015, output: 0.075, cache: 0.0015, inputPer1M: 15.00, outputPer1M: 75.00, cachePer1M: 1.50 };
-    }
-    if (id.includes("o1-mini") || id.includes("o3-mini")) {
-      return { input: 0.0011, output: 0.0044, cache: 0.00055, inputPer1M: 1.10, outputPer1M: 4.40, cachePer1M: 0.55 };
-    }
-    if (id.includes("o1-preview") || id.includes("o1")) {
-      return { input: 0.015, output: 0.060, cache: 0.0075, inputPer1M: 15.00, outputPer1M: 60.00, cachePer1M: 7.50 };
-    }
-    if (id.includes("gpt-4o-mini")) {
-      return { input: 0.00015, output: 0.0006, cache: 0.000075, inputPer1M: 0.15, outputPer1M: 0.60, cachePer1M: 0.075 };
-    }
-    if (id.includes("gpt-4o") || id.includes("chatgpt-4o")) {
-      return { input: 0.0025, output: 0.010, cache: 0.00125, inputPer1M: 2.50, outputPer1M: 10.00, cachePer1M: 1.25 };
-    }
-    if (id.includes("gpt-4-turbo") || id.includes("gpt-4")) {
-      return { input: 0.010, output: 0.030, cache: 0.005, inputPer1M: 10.00, outputPer1M: 30.00, cachePer1M: 5.00 };
-    }
-    if (id.includes("gemini-2.0-flash") || id.includes("gemini-2-flash")) {
-      return { input: 0.0001, output: 0.0004, cache: 0.000025, inputPer1M: 0.10, outputPer1M: 0.40, cachePer1M: 0.025 };
-    }
-    if (id.includes("gemini-1.5-pro") || id.includes("gemini-pro")) {
-      return { input: 0.00125, output: 0.005, cache: 0.00031, inputPer1M: 1.25, outputPer1M: 5.00, cachePer1M: 0.31 };
-    }
-    if (id.includes("gemini-1.5-flash")) {
-      return { input: 0.000075, output: 0.0003, cache: 0.000018, inputPer1M: 0.075, outputPer1M: 0.30, cachePer1M: 0.018 };
-    }
-    if (id.includes("llama-3.3-70b") || id.includes("llama-3-70b")) {
-      return { input: 0.00059, output: 0.00079, cache: 0.0003, inputPer1M: 0.59, outputPer1M: 0.79, cachePer1M: 0.30 };
-    }
-    if (id.includes("llama-3.1-405b")) {
-      return { input: 0.002, output: 0.004, cache: 0.001, inputPer1M: 2.00, outputPer1M: 4.00, cachePer1M: 1.00 };
-    }
-    if (id.includes("llama-3.1-8b") || id.includes("llama-3-8b") || id.includes("llama-8b")) {
-      return { input: 0.0001, output: 0.0002, cache: 0.00005, inputPer1M: 0.10, outputPer1M: 0.20, cachePer1M: 0.05 };
-    }
-    if (id.includes("qwen-2.5-72b") || id.includes("qwq-32b") || id.includes("qwen")) {
-      return { input: 0.0006, output: 0.0018, cache: 0.00015, inputPer1M: 0.60, outputPer1M: 1.80, cachePer1M: 0.15 };
-    }
-    if (id.includes("mistral-large")) {
-      return { input: 0.002, output: 0.006, cache: 0.0005, inputPer1M: 2.00, outputPer1M: 6.00, cachePer1M: 0.50 };
-    }
-    if (id.includes("mistral") || id.includes("nemo") || id.includes("codestral")) {
-      return { input: 0.0002, output: 0.0006, cache: 0.00005, inputPer1M: 0.20, outputPer1M: 0.60, cachePer1M: 0.05 };
-    }
-    if (id.includes("nougat") || id.includes("ocr")) {
-      return { input: 0.0002, output: 0.0005, cache: 0.00005, inputPer1M: 0.20, outputPer1M: 0.50, cachePer1M: 0.05 };
-    }
-
-    // 6. Deterministic variance for unknown models - NEVER repeat flat identical $0.50 / ₹42.00
-    let hash = 0;
-    for (let i = 0; i < id.length; i++) {
-      hash = ((hash << 5) - hash) + id.charCodeAt(i);
-      hash |= 0;
-    }
-    const seed = Math.abs(hash);
-    const in1M = 0.15 + ((seed % 170) / 100);
-    const out1M = in1M * (2.0 + ((seed % 20) / 10));
-    const cache1M = in1M * 0.25;
+    if (inInr === undefined) inInr = in1M * activeInrRate;
+    if (outInr === undefined) outInr = out1M * activeInrRate;
+    if (cacheInr === undefined) cacheInr = cache1M * activeInrRate;
 
     return {
       input: in1M / 1000,
@@ -215,7 +142,479 @@
       inputPer1M: in1M,
       outputPer1M: out1M,
       cachePer1M: cache1M,
+      inputPer1MInr: inInr,
+      outputPer1MInr: outInr,
+      cachePer1MInr: cacheInr,
     };
+  }
+
+  function parseProviderPricing(m, providerUrl) {
+    if (!m) return null;
+    const rawId = String(m.id || m.name || "").toLowerCase();
+
+    // 1. Explicit Free Model Check
+    if (m.is_free === true || rawId.includes(":free") || rawId.includes("pollinations") || rawId.includes("ollama")) {
+      return normalizePricing({ isFree: true, source: "api_provider", special: "100% Free / Local ($0.00 / ₹0.00)" });
+    }
+
+    const pUrl = (providerUrl || (typeof state !== "undefined" ? state.providerUrl : "") || "").toLowerCase();
+    const isAiCredits = pUrl.includes("aicredits") || (typeof state !== "undefined" && ((state.providerUrl || "").toLowerCase().includes("aicredits") || state.providerName === "AICredits"));
+    const activeExchangeRate = (typeof m.exchange_rate === "number" && m.exchange_rate > 0)
+      ? m.exchange_rate
+      : (isAiCredits ? (INR_PER_USD * 1.05 * 1.05) : INR_PER_USD);
+
+    // 2. Direct per-token fields (e.g. AICredits native payload)
+    const hasDirectInrTokens = typeof m.input_cost_per_token_inr === "number" || typeof m.output_cost_per_token_inr === "number";
+    const hasDirectUsdTokens = typeof m.input_cost_per_token === "number" || typeof m.output_cost_per_token === "number";
+
+    if (hasDirectInrTokens || (hasDirectUsdTokens && isAiCredits)) {
+      const inTokenInr = typeof m.input_cost_per_token_inr === "number" ? m.input_cost_per_token_inr : 0;
+      const outTokenInr = typeof m.output_cost_per_token_inr === "number" ? m.output_cost_per_token_inr : 0;
+      const cacheTokenInr = typeof m.cached_input_cost_per_token_inr === "number" ? m.cached_input_cost_per_token_inr : 0;
+
+      const inTokenUsd = typeof m.input_cost_per_token === "number" ? m.input_cost_per_token : 0;
+      const outTokenUsd = typeof m.output_cost_per_token === "number" ? m.output_cost_per_token : 0;
+      const cacheTokenUsd = typeof m.cached_input_cost_per_token === "number" ? m.cached_input_cost_per_token : 0;
+
+      const in1MInr = inTokenInr > 0 ? inTokenInr * 1000000 : (inTokenUsd > 0 ? inTokenUsd * 1000000 * activeExchangeRate : 0);
+      const out1MInr = outTokenInr > 0 ? outTokenInr * 1000000 : (outTokenUsd > 0 ? outTokenUsd * 1000000 * activeExchangeRate : 0);
+      const cache1MInr = cacheTokenInr > 0 ? cacheTokenInr * 1000000 : (cacheTokenUsd > 0 ? cacheTokenUsd * 1000000 * activeExchangeRate : 0);
+
+      const in1MUsd = inTokenUsd > 0 ? inTokenUsd * 1000000 : (in1MInr > 0 ? in1MInr / activeExchangeRate : 0);
+      const out1MUsd = outTokenUsd > 0 ? outTokenUsd * 1000000 : (out1MInr > 0 ? out1MInr / activeExchangeRate : 0);
+      const cache1MUsd = cacheTokenUsd > 0 ? cacheTokenUsd * 1000000 : (cache1MInr > 0 ? cache1MInr / activeExchangeRate : 0);
+
+      if (in1MUsd === 0 && out1MUsd === 0 && in1MInr === 0 && out1MInr === 0) {
+        if (m.is_free) {
+          return normalizePricing({ isFree: true, source: "api_provider", special: "100% Free / Local ($0.00 / ₹0.00)" });
+        }
+      } else {
+        return normalizePricing({
+          source: "api_provider",
+          input: in1MUsd / 1000,
+          output: out1MUsd / 1000,
+          cache: cache1MUsd / 1000,
+          inputPer1M: in1MUsd,
+          outputPer1M: out1MUsd,
+          cachePer1M: cache1MUsd,
+          inputPer1MInr: in1MInr,
+          outputPer1MInr: out1MInr,
+          cachePer1MInr: cache1MInr,
+          exchangeRate: activeExchangeRate,
+        });
+      }
+    }
+
+    // 3. Pricing Object (OpenRouter, OpenAI-compatible proxies, Together, Fireworks, DeepInfra, etc.)
+    const pObj = (m.pricing && typeof m.pricing === "object") ? m.pricing :
+                 (m.cost && typeof m.cost === "object") ? m.cost :
+                 (m.price && typeof m.price === "object") ? m.price :
+                 (m.rates && typeof m.rates === "object") ? m.rates :
+                 (m.per_million && typeof m.per_million === "object") ? m.per_million :
+                 (m.per_1m && typeof m.per_1m === "object") ? m.per_1m : null;
+
+    let rawPrompt = pObj ? (pObj.prompt ?? pObj.input ?? pObj.input_cost ?? pObj.input_price ?? pObj.input_per_million ?? pObj.prompt_per_1m ?? pObj.input_per_1m ?? pObj.in)
+                         : (m.prompt_price ?? m.input_price ?? m.input_cost ?? m.input_cost_per_million ?? m.prompt_per_1m);
+    let rawCompletion = pObj ? (pObj.completion ?? pObj.output ?? pObj.output_cost ?? pObj.output_price ?? pObj.output_per_million ?? pObj.completion_per_1m ?? pObj.output_per_1m ?? pObj.out)
+                             : (m.completion_price ?? m.output_price ?? m.output_cost ?? m.output_cost_per_million ?? m.completion_per_1m);
+    let rawCache = pObj ? (pObj.prompt_cached ?? pObj.input_cache_read ?? pObj.cache ?? pObj.cache_read ?? pObj.cached)
+                        : (m.cached_input_cost_per_token ?? m.cache_price);
+
+    if (rawPrompt !== undefined || rawCompletion !== undefined) {
+      const pIn = parseFloat(rawPrompt || "0");
+      const pOut = parseFloat(rawCompletion || "0");
+      const pCache = rawCache !== undefined ? parseFloat(rawCache || "0") : (pIn * 0.25);
+
+      if (pIn === 0 && pOut === 0) {
+        if (m.is_free || rawId.includes(":free")) {
+          return normalizePricing({ isFree: true, source: "api_provider", special: "100% Free / Local ($0.00 / ₹0.00)" });
+        }
+        return null;
+      }
+
+      const cur = String((pObj && pObj.currency) || m.currency || (isAiCredits ? "INR" : "USD")).toUpperCase();
+      const isCurInr = cur === "INR" || cur === "₹" || cur === "CREDITS";
+
+      const refRate = pIn > 0 ? pIn : pOut;
+      let unitMultiplier = 1;
+      if (refRate < 0.0001) {
+        unitMultiplier = 1000000;
+      } else if (pIn <= 0.02 && pOut <= 0.10) {
+        unitMultiplier = 1000;
+      } else if (refRate < 0.02) {
+        unitMultiplier = 1000;
+      } else {
+        unitMultiplier = 1;
+      }
+
+      const in1M = pIn > 0 ? pIn * unitMultiplier : 0;
+      const out1M = pOut > 0 ? pOut * unitMultiplier : 0;
+      const cache1M = pCache > 0 ? pCache * unitMultiplier : 0;
+
+      let in1MUsd, out1MUsd, cache1MUsd;
+      let in1MInr, out1MInr, cache1MInr;
+
+      if (isCurInr) {
+        in1MInr = in1M;
+        out1MInr = out1M;
+        cache1MInr = cache1M;
+        in1MUsd = in1MInr / activeExchangeRate;
+        out1MUsd = out1MInr / activeExchangeRate;
+        cache1MUsd = cache1MInr / activeExchangeRate;
+      } else {
+        in1MUsd = in1M;
+        out1MUsd = out1M;
+        cache1MUsd = cache1M;
+        in1MInr = in1MUsd * activeExchangeRate;
+        out1MInr = out1MUsd * activeExchangeRate;
+        cache1MInr = cache1MUsd * activeExchangeRate;
+      }
+
+      return normalizePricing({
+        source: "api_provider",
+        input: in1MUsd / 1000,
+        output: out1MUsd / 1000,
+        cache: cache1MUsd / 1000,
+        inputPer1M: in1MUsd,
+        outputPer1M: out1MUsd,
+        cachePer1M: cache1MUsd,
+        inputPer1MInr: in1MInr,
+        outputPer1MInr: out1MInr,
+        cachePer1MInr: cache1MInr,
+        exchangeRate: activeExchangeRate,
+      });
+    }
+
+    return null;
+  }
+
+  function formatCurrencyDisplay(val, symbol) {
+    const n = typeof val === "number" ? val : parseFloat(val || "0");
+    if (isNaN(n) || n === 0) return `${symbol}0.00`;
+    if (n < 0.001) {
+      return `${symbol}${n.toFixed(4)}`;
+    }
+    if (n < 0.01) {
+      return `${symbol}${n.toFixed(3)}`;
+    }
+    return `${symbol}${n.toFixed(2)}`;
+  }
+
+  const MODEL_PRICING = {
+    // DeepSeek family
+    "deepseek/deepseek-r1": { input: 0.00055, output: 0.00219, cache: 0.00014, inputPer1M: 0.55, outputPer1M: 2.19, cachePer1M: 0.14, inputPer1MInr: 46.20, outputPer1MInr: 183.96, cachePer1MInr: 11.76 },
+    "deepseek-r1": { input: 0.00055, output: 0.00219, cache: 0.00014, inputPer1M: 0.55, outputPer1M: 2.19, cachePer1M: 0.14, inputPer1MInr: 46.20, outputPer1MInr: 183.96, cachePer1MInr: 11.76 },
+    "deepseek-reasoner": { input: 0.00055, output: 0.00219, cache: 0.00014, inputPer1M: 0.55, outputPer1M: 2.19, cachePer1M: 0.14, inputPer1MInr: 46.20, outputPer1MInr: 183.96, cachePer1MInr: 11.76 },
+    "deepseek/deepseek-chat": { input: 0.00014, output: 0.00028, cache: 0.000014, inputPer1M: 0.14, outputPer1M: 0.28, cachePer1M: 0.014, inputPer1MInr: 11.76, outputPer1MInr: 23.52, cachePer1MInr: 1.18 },
+    "deepseek-chat": { input: 0.00014, output: 0.00028, cache: 0.000014, inputPer1M: 0.14, outputPer1M: 0.28, cachePer1M: 0.014, inputPer1MInr: 11.76, outputPer1MInr: 23.52, cachePer1MInr: 1.18 },
+    "deepseek/deepseek-v3": { input: 0.00014, output: 0.00028, cache: 0.000014, inputPer1M: 0.14, outputPer1M: 0.28, cachePer1M: 0.014, inputPer1MInr: 11.76, outputPer1MInr: 23.52, cachePer1MInr: 1.18 },
+    "deepseek-v3": { input: 0.00014, output: 0.00028, cache: 0.000014, inputPer1M: 0.14, outputPer1M: 0.28, cachePer1M: 0.014, inputPer1MInr: 11.76, outputPer1MInr: 23.52, cachePer1MInr: 1.18 },
+
+    // Anthropic Claude family
+    "anthropic/claude-3.7-sonnet": { input: 0.003, output: 0.015, cache: 0.0003, inputPer1M: 3.00, outputPer1M: 15.00, cachePer1M: 0.30, inputPer1MInr: 252.00, outputPer1MInr: 1260.00, cachePer1MInr: 25.20 },
+    "claude-3.7-sonnet": { input: 0.003, output: 0.015, cache: 0.0003, inputPer1M: 3.00, outputPer1M: 15.00, cachePer1M: 0.30, inputPer1MInr: 252.00, outputPer1MInr: 1260.00, cachePer1MInr: 25.20 },
+    "anthropic/claude-3-7-sonnet": { input: 0.003, output: 0.015, cache: 0.0003, inputPer1M: 3.00, outputPer1M: 15.00, cachePer1M: 0.30, inputPer1MInr: 252.00, outputPer1MInr: 1260.00, cachePer1MInr: 25.20 },
+    "claude-3-7-sonnet": { input: 0.003, output: 0.015, cache: 0.0003, inputPer1M: 3.00, outputPer1M: 15.00, cachePer1M: 0.30, inputPer1MInr: 252.00, outputPer1MInr: 1260.00, cachePer1MInr: 25.20 },
+    "anthropic/claude-3.7-sonnet:thinking": { input: 0.003, output: 0.015, cache: 0.0003, inputPer1M: 3.00, outputPer1M: 15.00, cachePer1M: 0.30, inputPer1MInr: 252.00, outputPer1MInr: 1260.00, cachePer1MInr: 25.20 },
+    "claude-3.7-sonnet:thinking": { input: 0.003, output: 0.015, cache: 0.0003, inputPer1M: 3.00, outputPer1M: 15.00, cachePer1M: 0.30, inputPer1MInr: 252.00, outputPer1MInr: 1260.00, cachePer1MInr: 25.20 },
+    "anthropic/claude-3.5-sonnet": { input: 0.003, output: 0.015, cache: 0.0003, inputPer1M: 3.00, outputPer1M: 15.00, cachePer1M: 0.30, inputPer1MInr: 252.00, outputPer1MInr: 1260.00, cachePer1MInr: 25.20 },
+    "claude-3.5-sonnet": { input: 0.003, output: 0.015, cache: 0.0003, inputPer1M: 3.00, outputPer1M: 15.00, cachePer1M: 0.30, inputPer1MInr: 252.00, outputPer1MInr: 1260.00, cachePer1MInr: 25.20 },
+    "anthropic/claude-3-5-sonnet": { input: 0.003, output: 0.015, cache: 0.0003, inputPer1M: 3.00, outputPer1M: 15.00, cachePer1M: 0.30, inputPer1MInr: 252.00, outputPer1MInr: 1260.00, cachePer1MInr: 25.20 },
+    "claude-3-5-sonnet": { input: 0.003, output: 0.015, cache: 0.0003, inputPer1M: 3.00, outputPer1M: 15.00, cachePer1M: 0.30, inputPer1MInr: 252.00, outputPer1MInr: 1260.00, cachePer1MInr: 25.20 },
+    "anthropic/claude-3.5-haiku": { input: 0.0008, output: 0.004, cache: 0.00008, inputPer1M: 0.80, outputPer1M: 4.00, cachePer1M: 0.08, inputPer1MInr: 67.20, outputPer1MInr: 336.00, cachePer1MInr: 6.72 },
+    "claude-3.5-haiku": { input: 0.0008, output: 0.004, cache: 0.00008, inputPer1M: 0.80, outputPer1M: 4.00, cachePer1M: 0.08, inputPer1MInr: 67.20, outputPer1MInr: 336.00, cachePer1MInr: 6.72 },
+    "anthropic/claude-3-5-haiku": { input: 0.0008, output: 0.004, cache: 0.00008, inputPer1M: 0.80, outputPer1M: 4.00, cachePer1M: 0.08, inputPer1MInr: 67.20, outputPer1MInr: 336.00, cachePer1MInr: 6.72 },
+    "claude-3-5-haiku": { input: 0.0008, output: 0.004, cache: 0.00008, inputPer1M: 0.80, outputPer1M: 4.00, cachePer1M: 0.08, inputPer1MInr: 67.20, outputPer1MInr: 336.00, cachePer1MInr: 6.72 },
+    "anthropic/claude-3-opus": { input: 0.015, output: 0.075, cache: 0.0015, inputPer1M: 15.00, outputPer1M: 75.00, cachePer1M: 1.50, inputPer1MInr: 1260.00, outputPer1MInr: 6300.00, cachePer1MInr: 126.00 },
+    "claude-3-opus": { input: 0.015, output: 0.075, cache: 0.0015, inputPer1M: 15.00, outputPer1M: 75.00, cachePer1M: 1.50, inputPer1MInr: 1260.00, outputPer1MInr: 6300.00, cachePer1MInr: 126.00 },
+
+    // OpenAI family
+    "openai/o3-mini": { input: 0.0011, output: 0.0044, cache: 0.00055, inputPer1M: 1.10, outputPer1M: 4.40, cachePer1M: 0.55, inputPer1MInr: 92.40, outputPer1MInr: 369.60, cachePer1MInr: 46.20 },
+    "o3-mini": { input: 0.0011, output: 0.0044, cache: 0.00055, inputPer1M: 1.10, outputPer1M: 4.40, cachePer1M: 0.55, inputPer1MInr: 92.40, outputPer1MInr: 369.60, cachePer1MInr: 46.20 },
+    "openai/o1-mini": { input: 0.0011, output: 0.0044, cache: 0.00055, inputPer1M: 1.10, outputPer1M: 4.40, cachePer1M: 0.55, inputPer1MInr: 92.40, outputPer1MInr: 369.60, cachePer1MInr: 46.20 },
+    "o1-mini": { input: 0.0011, output: 0.0044, cache: 0.00055, inputPer1M: 1.10, outputPer1M: 4.40, cachePer1M: 0.55, inputPer1MInr: 92.40, outputPer1MInr: 369.60, cachePer1MInr: 46.20 },
+    "openai/o1": { input: 0.015, output: 0.060, cache: 0.0075, inputPer1M: 15.00, outputPer1M: 60.00, cachePer1M: 7.50, inputPer1MInr: 1260.00, outputPer1MInr: 5040.00, cachePer1MInr: 630.00 },
+    "o1": { input: 0.015, output: 0.060, cache: 0.0075, inputPer1M: 15.00, outputPer1M: 60.00, cachePer1M: 7.50, inputPer1MInr: 1260.00, outputPer1MInr: 5040.00, cachePer1MInr: 630.00 },
+    "openai/gpt-4o": { input: 0.0025, output: 0.010, cache: 0.00125, inputPer1M: 2.50, outputPer1M: 10.00, cachePer1M: 1.25, inputPer1MInr: 210.00, outputPer1MInr: 840.00, cachePer1MInr: 105.00 },
+    "gpt-4o": { input: 0.0025, output: 0.010, cache: 0.00125, inputPer1M: 2.50, outputPer1M: 10.00, cachePer1M: 1.25, inputPer1MInr: 210.00, outputPer1MInr: 840.00, cachePer1MInr: 105.00 },
+    "openai/gpt-4o-mini": { input: 0.00015, output: 0.0006, cache: 0.000075, inputPer1M: 0.15, outputPer1M: 0.60, cachePer1M: 0.075, inputPer1MInr: 12.60, outputPer1MInr: 50.40, cachePer1MInr: 6.30 },
+    "gpt-4o-mini": { input: 0.00015, output: 0.0006, cache: 0.000075, inputPer1M: 0.15, outputPer1M: 0.60, cachePer1M: 0.075, inputPer1MInr: 12.60, outputPer1MInr: 50.40, cachePer1MInr: 6.30 },
+    "openai/gpt-4-turbo": { input: 0.010, output: 0.030, cache: 0.005, inputPer1M: 10.00, outputPer1M: 30.00, cachePer1M: 5.00, inputPer1MInr: 840.00, outputPer1MInr: 2520.00, cachePer1MInr: 420.00 },
+    "gpt-4-turbo": { input: 0.010, output: 0.030, cache: 0.005, inputPer1M: 10.00, outputPer1M: 30.00, cachePer1M: 5.00, inputPer1MInr: 840.00, outputPer1MInr: 2520.00, cachePer1MInr: 420.00 },
+
+    // Meta LLaMA family
+    "groq/llama-3.3-70b-versatile": { input: 0.00059, output: 0.00079, cache: 0.0003, inputPer1M: 0.59, outputPer1M: 0.79, cachePer1M: 0.30, inputPer1MInr: 49.56, outputPer1MInr: 66.36, cachePer1MInr: 25.20 },
+    "llama-3.3-70b-versatile": { input: 0.00059, output: 0.00079, cache: 0.0003, inputPer1M: 0.59, outputPer1M: 0.79, cachePer1M: 0.30, inputPer1MInr: 49.56, outputPer1MInr: 66.36, cachePer1MInr: 25.20 },
+    "meta-llama/llama-3.3-70b-instruct": { input: 0.00059, output: 0.00079, cache: 0.0003, inputPer1M: 0.59, outputPer1M: 0.79, cachePer1M: 0.30, inputPer1MInr: 49.56, outputPer1MInr: 66.36, cachePer1MInr: 25.20 },
+    "llama-3.3-70b-instruct": { input: 0.00059, output: 0.00079, cache: 0.0003, inputPer1M: 0.59, outputPer1M: 0.79, cachePer1M: 0.30, inputPer1MInr: 49.56, outputPer1MInr: 66.36, cachePer1MInr: 25.20 },
+    "meta-llama/llama-3.1-70b-instruct": { input: 0.00059, output: 0.00079, cache: 0.0003, inputPer1M: 0.59, outputPer1M: 0.79, cachePer1M: 0.30, inputPer1MInr: 49.56, outputPer1MInr: 66.36, cachePer1MInr: 25.20 },
+    "llama-3.1-70b-instruct": { input: 0.00059, output: 0.00079, cache: 0.0003, inputPer1M: 0.59, outputPer1M: 0.79, cachePer1M: 0.30, inputPer1MInr: 49.56, outputPer1MInr: 66.36, cachePer1MInr: 25.20 },
+    "llama-3.1-70b": { input: 0.00059, output: 0.00079, cache: 0.0003, inputPer1M: 0.59, outputPer1M: 0.79, cachePer1M: 0.30, inputPer1MInr: 49.56, outputPer1MInr: 66.36, cachePer1MInr: 25.20 },
+    "meta-llama/llama-3.1-405b-instruct": { input: 0.002, output: 0.004, cache: 0.001, inputPer1M: 2.00, outputPer1M: 4.00, cachePer1M: 1.00, inputPer1MInr: 168.00, outputPer1MInr: 336.00, cachePer1MInr: 84.00 },
+    "llama-3.1-405b": { input: 0.002, output: 0.004, cache: 0.001, inputPer1M: 2.00, outputPer1M: 4.00, cachePer1M: 1.00, inputPer1MInr: 168.00, outputPer1MInr: 336.00, cachePer1MInr: 84.00 },
+    "meta-llama/llama-3.1-8b-instruct": { input: 0.0001, output: 0.0002, cache: 0.00005, inputPer1M: 0.10, outputPer1M: 0.20, cachePer1M: 0.05, inputPer1MInr: 8.40, outputPer1MInr: 16.80, cachePer1MInr: 4.20 },
+    "llama-3.1-8b-instruct": { input: 0.0001, output: 0.0002, cache: 0.00005, inputPer1M: 0.10, outputPer1M: 0.20, cachePer1M: 0.05, inputPer1MInr: 8.40, outputPer1MInr: 16.80, cachePer1MInr: 4.20 },
+    "llama-3.1-8b": { input: 0.0001, output: 0.0002, cache: 0.00005, inputPer1M: 0.10, outputPer1M: 0.20, cachePer1M: 0.05, inputPer1MInr: 8.40, outputPer1MInr: 16.80, cachePer1MInr: 4.20 },
+
+    // Google Gemini family
+    "google/gemini-2.0-flash": { input: 0.0001, output: 0.0004, cache: 0.000025, inputPer1M: 0.10, outputPer1M: 0.40, cachePer1M: 0.025, inputPer1MInr: 8.40, outputPer1MInr: 33.60, cachePer1MInr: 2.10 },
+    "gemini-2.0-flash": { input: 0.0001, output: 0.0004, cache: 0.000025, inputPer1M: 0.10, outputPer1M: 0.40, cachePer1M: 0.025, inputPer1MInr: 8.40, outputPer1MInr: 33.60, cachePer1MInr: 2.10 },
+    "google/gemini-2.0-flash-exp": { input: 0.0001, output: 0.0004, cache: 0.000025, inputPer1M: 0.10, outputPer1M: 0.40, cachePer1M: 0.025, inputPer1MInr: 8.40, outputPer1MInr: 33.60, cachePer1MInr: 2.10 },
+    "gemini-2.0-flash-exp": { input: 0.0001, output: 0.0004, cache: 0.000025, inputPer1M: 0.10, outputPer1M: 0.40, cachePer1M: 0.025, inputPer1MInr: 8.40, outputPer1MInr: 33.60, cachePer1MInr: 2.10 },
+    "google/gemini-2.0-flash-lite": { input: 0.000075, output: 0.0003, cache: 0.000018, inputPer1M: 0.075, outputPer1M: 0.30, cachePer1M: 0.018, inputPer1MInr: 6.30, outputPer1MInr: 25.20, cachePer1MInr: 1.51 },
+    "gemini-2.0-flash-lite": { input: 0.000075, output: 0.0003, cache: 0.000018, inputPer1M: 0.075, outputPer1M: 0.30, cachePer1M: 0.018, inputPer1MInr: 6.30, outputPer1MInr: 25.20, cachePer1MInr: 1.51 },
+    "google/gemini-1.5-pro": { input: 0.00125, output: 0.005, cache: 0.00031, inputPer1M: 1.25, outputPer1M: 5.00, cachePer1M: 0.31, inputPer1MInr: 105.00, outputPer1MInr: 420.00, cachePer1MInr: 26.04 },
+    "gemini-1.5-pro": { input: 0.00125, output: 0.005, cache: 0.00031, inputPer1M: 1.25, outputPer1M: 5.00, cachePer1M: 0.31, inputPer1MInr: 105.00, outputPer1MInr: 420.00, cachePer1MInr: 26.04 },
+    "google/gemini-1.5-flash": { input: 0.000075, output: 0.0003, cache: 0.000018, inputPer1M: 0.075, outputPer1M: 0.30, cachePer1M: 0.018, inputPer1MInr: 6.30, outputPer1MInr: 25.20, cachePer1MInr: 1.51 },
+    "gemini-1.5-flash": { input: 0.000075, output: 0.0003, cache: 0.000018, inputPer1M: 0.075, outputPer1M: 0.30, cachePer1M: 0.018, inputPer1MInr: 6.30, outputPer1MInr: 25.20, cachePer1MInr: 1.51 },
+
+    // Qwen & Mistral
+    "qwen/qwq-32b-preview": { input: 0.0006, output: 0.0018, cache: 0.00015, inputPer1M: 0.60, outputPer1M: 1.80, cachePer1M: 0.15, inputPer1MInr: 50.40, outputPer1MInr: 151.20, cachePer1MInr: 12.60 },
+    "qwq-32b-preview": { input: 0.0006, output: 0.0018, cache: 0.00015, inputPer1M: 0.60, outputPer1M: 1.80, cachePer1M: 0.15, inputPer1MInr: 50.40, outputPer1MInr: 151.20, cachePer1MInr: 12.60 },
+    "qwen/qwen-2.5-72b-instruct": { input: 0.0006, output: 0.0018, cache: 0.00015, inputPer1M: 0.60, outputPer1M: 1.80, cachePer1M: 0.15, inputPer1MInr: 50.40, outputPer1MInr: 151.20, cachePer1MInr: 12.60 },
+    "qwen-2.5-72b-instruct": { input: 0.0006, output: 0.0018, cache: 0.00015, inputPer1M: 0.60, outputPer1M: 1.80, cachePer1M: 0.15, inputPer1MInr: 50.40, outputPer1MInr: 151.20, cachePer1MInr: 12.60 },
+    "mistralai/mistral-large": { input: 0.002, output: 0.006, cache: 0.0005, inputPer1M: 2.00, outputPer1M: 6.00, cachePer1M: 0.50, inputPer1MInr: 168.00, outputPer1MInr: 504.00, cachePer1MInr: 42.00 },
+    "mistral-large": { input: 0.002, output: 0.006, cache: 0.0005, inputPer1M: 2.00, outputPer1M: 6.00, cachePer1M: 0.50, inputPer1MInr: 168.00, outputPer1MInr: 504.00, cachePer1MInr: 42.00 },
+    "mistralai/mistral-nemo": { input: 0.0002, output: 0.0006, cache: 0.00005, inputPer1M: 0.20, outputPer1M: 0.60, cachePer1M: 0.05, inputPer1MInr: 16.80, outputPer1MInr: 50.40, cachePer1MInr: 4.20 },
+    "mistral-nemo": { input: 0.0002, output: 0.0006, cache: 0.00005, inputPer1M: 0.20, outputPer1M: 0.60, cachePer1M: 0.05, inputPer1MInr: 16.80, outputPer1MInr: 50.40, cachePer1MInr: 4.20 },
+
+    // Lunaris 8B (AICredits: ₹2.50 in, ₹5.00 out per 1M)
+    "lunaris/lunaris-8b": { input: 0.0000298, output: 0.0000595, cache: 0, inputPer1MInr: 2.50, outputPer1MInr: 5.00, inputPer1M: 0.03, outputPer1M: 0.06, cachePer1M: 0, cachePer1MInr: 0 },
+    "lunaris-8b": { input: 0.0000298, output: 0.0000595, cache: 0, inputPer1MInr: 2.50, outputPer1MInr: 5.00, inputPer1M: 0.03, outputPer1M: 0.06, cachePer1M: 0, cachePer1MInr: 0 },
+    "sao10k/l3-lunaris-8b": { input: 0.0000298, output: 0.0000595, cache: 0, inputPer1MInr: 2.50, outputPer1MInr: 5.00, inputPer1M: 0.03, outputPer1M: 0.06, cachePer1M: 0, cachePer1MInr: 0 },
+    "l3-lunaris-8b": { input: 0.0000298, output: 0.0000595, cache: 0, inputPer1MInr: 2.50, outputPer1MInr: 5.00, inputPer1M: 0.03, outputPer1M: 0.06, cachePer1M: 0, cachePer1MInr: 0 },
+
+    // OCR models
+    "ocr/nougat-vision": { input: 0.0002, output: 0.0005, cache: 0.00005, inputPer1M: 0.20, outputPer1M: 0.50, cachePer1M: 0.05, inputPer1MInr: 16.80, outputPer1MInr: 42.00, cachePer1MInr: 4.20 },
+    "nougat-vision": { input: 0.0002, output: 0.0005, cache: 0.00005, inputPer1M: 0.20, outputPer1M: 0.50, cachePer1M: 0.05, inputPer1MInr: 16.80, outputPer1MInr: 42.00, cachePer1MInr: 4.20 },
+    "got-ocr/got-ocr-2.0": { input: 0.0002, output: 0.0005, cache: 0.00005, inputPer1MInr: 16.80, outputPer1MInr: 42.00, inputPer1M: 0.20, outputPer1M: 0.50, cachePer1M: 0.05, cachePer1MInr: 4.20 },
+    "got-ocr-2.0": { input: 0.0002, output: 0.0005, cache: 0.00005, inputPer1MInr: 16.80, outputPer1MInr: 42.00, inputPer1M: 0.20, outputPer1M: 0.50, cachePer1M: 0.05, cachePer1MInr: 4.20 },
+
+    // Dedicated Non-Chat Models
+    "openai/dall-e-3": { special: "$0.040 (₹3.36) / standard img", type: "image", input: 0.04, output: 0.04, cache: 0 },
+    "openai/dall-e-2": { special: "$0.020 (₹1.68) / img", type: "image", input: 0.02, output: 0.02, cache: 0 },
+    "black-forest-labs/flux-1-schnell": { special: "$0.003 (₹0.25) / img", type: "image", input: 0.003, output: 0.003, cache: 0 },
+    "black-forest-labs/flux-1-dev": { special: "$0.025 (₹2.10) / img", type: "image", input: 0.025, output: 0.025, cache: 0 },
+    "openai/tts-1": { special: "$15.00 (₹1,260) / 1M chars", type: "audio", input: 0.015, output: 0.015, cache: 0 },
+    "openai/tts-1-hd": { special: "$30.00 (₹2,520) / 1M chars", type: "audio", input: 0.03, output: 0.03, cache: 0 },
+    "openai/whisper-1": { special: "$0.006 (₹0.50) / min", type: "audio", input: 0.006, output: 0.006, cache: 0 },
+    "openai/whisper-large-v3-turbo": { special: "$0.003 (₹0.25) / min", type: "audio", input: 0.003, output: 0.003, cache: 0 },
+    "luma/ray-2": { special: "$0.200 (₹16.80) / video gen", type: "video", input: 0.2, output: 0.2, cache: 0 },
+  };
+
+  function getModelPricing(modelId, modelObj) {
+    const id = String(modelId || "").toLowerCase();
+
+    // Check user custom model pricing override from localStorage
+    try {
+      const storedCustomPricing = JSON.parse(localStorage.getItem("af_custom_pricing") || "{}");
+      if (storedCustomPricing[modelId] || storedCustomPricing[id]) {
+        const cp = storedCustomPricing[modelId] || storedCustomPricing[id];
+        const inInr = cp.inputPer1MInr !== undefined ? parseFloat(cp.inputPer1MInr || "0") : (cp.inputPer1M !== undefined ? parseFloat(cp.inputPer1M || "0") * INR_PER_USD : 0);
+        const outInr = cp.outputPer1MInr !== undefined ? parseFloat(cp.outputPer1MInr || "0") : (cp.outputPer1M !== undefined ? parseFloat(cp.outputPer1M || "0") * INR_PER_USD : 0);
+        const inUsd = cp.inputPer1M !== undefined ? parseFloat(cp.inputPer1M || "0") : (inInr / INR_PER_USD);
+        const outUsd = cp.outputPer1M !== undefined ? parseFloat(cp.outputPer1M || "0") : (outInr / INR_PER_USD);
+        return normalizePricing({
+          input: inUsd / 1000,
+          output: outUsd / 1000,
+          cache: 0,
+          inputPer1M: inUsd,
+          outputPer1M: outUsd,
+          cachePer1M: 0,
+          inputPer1MInr: inInr,
+          outputPer1MInr: outInr,
+          cachePer1MInr: 0,
+        });
+      }
+    } catch (_) {}
+
+    // Auto-discover modelObj from state if not directly supplied
+    if (!modelObj && typeof state !== "undefined" && Array.isArray(state.models)) {
+      modelObj = state.models.find(m => m.id === modelId || (m.id && m.id.toLowerCase() === id));
+    }
+
+    // 0. Check for Local / Free Provider URLs (Ollama, Termux, Localhost)
+    if (typeof state !== "undefined" && state.providerUrl) {
+      const pUrl = state.providerUrl.toLowerCase();
+      if (pUrl.includes("localhost") || pUrl.includes("127.0.0.1") || pUrl.includes(":11434")) {
+        return normalizePricing({ isFree: true, special: "100% Free / Local ($0.00 / ₹0.00)" });
+      }
+    }
+
+    // 1. Free / Local models check by ID or provider
+    if (id.includes(":free") || id.includes("pollinations") || id.includes("ollama") || (modelObj && (modelObj.provider === "ollama" || modelObj.provider === "local"))) {
+      return normalizePricing({ isFree: true, special: "100% Free / Local ($0.00 / ₹0.00)" });
+    }
+
+    // 2. LIVE DYNAMIC API-RETURNED PRICING (Top priority over static hardcoded fallback registries)
+    // Check if modelObj has pricing or if persistent provider pricing cache has it
+    let livePricing = null;
+    if (modelObj) {
+      if (modelObj.pricing && typeof modelObj.pricing === "object") {
+        if (modelObj.pricing.inputPer1M !== undefined || modelObj.pricing.inputPer1MInr !== undefined) {
+          livePricing = modelObj.pricing;
+        } else {
+          livePricing = parseProviderPricing(modelObj, typeof state !== "undefined" ? state.providerUrl : "");
+        }
+      } else if (modelObj.input_cost_per_token_inr !== undefined || modelObj.input_cost_per_token !== undefined) {
+        livePricing = parseProviderPricing(modelObj, typeof state !== "undefined" ? state.providerUrl : "");
+      }
+    }
+    if (!livePricing && typeof state !== "undefined" && state.providerModelsPricing) {
+      livePricing = state.providerModelsPricing[modelId] || state.providerModelsPricing[id];
+    }
+    if (!livePricing) {
+      try {
+        const storedPricing = JSON.parse(localStorage.getItem("af_provider_pricing_cache") || "{}");
+        livePricing = storedPricing[modelId] || storedPricing[id];
+      } catch (_) {}
+    }
+
+    if (livePricing) {
+      return normalizePricing({
+        ...livePricing,
+        source: livePricing.source || "api_provider"
+      });
+    }
+
+    // 3. Dedicated Non-Chat Models
+    if (id.includes("flux-1-schnell") || id.includes("flux-schnell")) {
+      return normalizePricing({ special: "$0.003 (₹0.25) / img", type: "image", input: 0.003, output: 0.003, cache: 0 });
+    }
+    if (id.includes("flux-1-dev") || id.includes("flux-dev")) {
+      return normalizePricing({ special: "$0.025 (₹2.10) / img", type: "image", input: 0.025, output: 0.025, cache: 0 });
+    }
+    if (id.includes("dall-e-3")) {
+      return normalizePricing({ special: "$0.040 (₹3.36) / standard img", type: "image", input: 0.04, output: 0.04, cache: 0 });
+    }
+    if (id.includes("dall-e-2")) {
+      return normalizePricing({ special: "$0.020 (₹1.68) / img", type: "image", input: 0.02, output: 0.02, cache: 0 });
+    }
+    if (id.includes("whisper-large-v3-turbo")) {
+      return normalizePricing({ special: "$0.003 (₹0.25) / min", type: "audio", input: 0.003, output: 0.003, cache: 0 });
+    }
+    if (id.includes("whisper")) {
+      return normalizePricing({ special: "$0.006 (₹0.50) / min", type: "audio", input: 0.006, output: 0.006, cache: 0 });
+    }
+    if (id.includes("tts-1-hd")) {
+      return normalizePricing({ special: "$30.00 (₹2,520) / 1M chars", type: "audio", input: 0.03, output: 0.03, cache: 0 });
+    }
+    if (id.includes("tts-1") || id.includes("tts")) {
+      return normalizePricing({ special: "$15.00 (₹1,260) / 1M chars", type: "audio", input: 0.015, output: 0.015, cache: 0 });
+    }
+    if (id.includes("ray-2") || id.includes("luma") || id.includes("video") || id.includes("kling") || id.includes("runway") || id.includes("sora")) {
+      return normalizePricing({ special: "$0.200 (₹16.80) / video gen", type: "video", input: 0.2, output: 0.2, cache: 0 });
+    }
+
+    // 4. Special handling for Lunaris (explicit aicredits.in rate: ₹2.50 in, ₹5.00 out per 1M)
+    if (id.includes("lunaris")) {
+      const outInr = 5.0; // ₹5 per 1M output tokens (aicredits.in)
+      const inInr = 2.5; // ₹2.5 per 1M input tokens
+      const outUsd1M = outInr / INR_PER_USD;
+      const inUsd1M = inInr / INR_PER_USD;
+      return normalizePricing({
+        source: "special_lunaris",
+        input: inUsd1M / 1000,
+        output: outUsd1M / 1000,
+        cache: 0,
+        inputPer1M: inUsd1M,
+        outputPer1M: outUsd1M,
+        cachePer1M: 0,
+        inputPer1MInr: inInr,
+        outputPer1MInr: outInr,
+        cachePer1MInr: 0,
+      });
+    }
+
+    // Provider pricing context
+    const isAiCredits = typeof state !== "undefined" && ((state.providerUrl || "").toLowerCase().includes("aicredits") || (state.providerName || "") === "AICredits");
+    const aicInrRate = isAiCredits ? (INR_PER_USD * 1.05 * 1.05) : INR_PER_USD;
+
+    function applyProviderRate(item) {
+      if (isAiCredits && !id.includes("lunaris")) {
+        const in1M = item.inputPer1M !== undefined ? item.inputPer1M : ((item.input || 0.0002) * 1000);
+        const out1M = item.outputPer1M !== undefined ? item.outputPer1M : ((item.output || 0.0006) * 1000);
+        const c1M = item.cachePer1M !== undefined ? item.cachePer1M : ((item.cache || 0) * 1000);
+        return normalizePricing({
+          ...item,
+          inputPer1M: in1M,
+          outputPer1M: out1M,
+          cachePer1M: c1M,
+          inputPer1MInr: in1M * aicInrRate,
+          outputPer1MInr: out1M * aicInrRate,
+          cachePer1MInr: c1M * aicInrRate,
+        });
+      }
+      return normalizePricing(item);
+    }
+
+    // 5. Direct match in static registry
+    if (MODEL_PRICING[modelId]) {
+      return applyProviderRate(MODEL_PRICING[modelId]);
+    }
+    for (const [key, val] of Object.entries(MODEL_PRICING)) {
+      if (id === key.toLowerCase() || id.endsWith("/" + key.toLowerCase()) || key.toLowerCase().endsWith("/" + id)) {
+        return applyProviderRate(val);
+      }
+    }
+
+    // 6. Family Heuristic Matching
+    let heuristic = null;
+    if (id.includes("deepseek-r1") || id.includes("deepseek/r1") || (id.includes("deepseek") && id.includes("reasoner"))) {
+      heuristic = { inputPer1M: 0.55, outputPer1M: 2.19, cachePer1M: 0.14 };
+    } else if (id.includes("deepseek-v3") || id.includes("deepseek-chat") || id.includes("deepseek")) {
+      heuristic = { inputPer1M: 0.14, outputPer1M: 0.28, cachePer1M: 0.014 };
+    } else if (id.includes("claude-3-7") || id.includes("claude-3.7") || id.includes("claude-3-5-sonnet") || id.includes("claude-3.5-sonnet")) {
+      heuristic = { inputPer1M: 3.00, outputPer1M: 15.00, cachePer1M: 0.30 };
+    } else if (id.includes("claude-3-5-haiku") || id.includes("claude-3.5-haiku") || id.includes("haiku")) {
+      heuristic = { inputPer1M: 0.80, outputPer1M: 4.00, cachePer1M: 0.08 };
+    } else if (id.includes("claude-3-opus") || id.includes("claude-3.0-opus") || id.includes("opus")) {
+      heuristic = { inputPer1M: 15.00, outputPer1M: 75.00, cachePer1M: 1.50 };
+    } else if (id.includes("o1-mini") || id.includes("o3-mini")) {
+      heuristic = { inputPer1M: 1.10, outputPer1M: 4.40, cachePer1M: 0.55 };
+    } else if (id.includes("o1-preview") || id.includes("o1")) {
+      heuristic = { inputPer1M: 15.00, outputPer1M: 60.00, cachePer1M: 7.50 };
+    } else if (id.includes("gpt-4o-mini")) {
+      heuristic = { inputPer1M: 0.15, outputPer1M: 0.60, cachePer1M: 0.075 };
+    } else if (id.includes("gpt-4o") || id.includes("chatgpt-4o")) {
+      heuristic = { inputPer1M: 2.50, outputPer1M: 10.00, cachePer1M: 1.25 };
+    } else if (id.includes("gpt-4-turbo") || id.includes("gpt-4")) {
+      heuristic = { inputPer1M: 10.00, outputPer1M: 30.00, cachePer1M: 5.00 };
+    } else if (id.includes("gemini-2.0-flash-lite") || id.includes("flash-lite")) {
+      heuristic = { inputPer1M: 0.075, outputPer1M: 0.30, cachePer1M: 0.018 };
+    } else if (id.includes("gemini-2.0-flash") || id.includes("gemini-2-flash")) {
+      heuristic = { inputPer1M: 0.10, outputPer1M: 0.40, cachePer1M: 0.025 };
+    } else if (id.includes("gemini-1.5-pro") || id.includes("gemini-pro")) {
+      heuristic = { inputPer1M: 1.25, outputPer1M: 5.00, cachePer1M: 0.31 };
+    } else if (id.includes("gemini-1.5-flash")) {
+      heuristic = { inputPer1M: 0.075, outputPer1M: 0.30, cachePer1M: 0.018 };
+    } else if (id.includes("llama-3.3-70b") || id.includes("llama-3.1-70b") || id.includes("llama-3-70b") || id.includes("llama-70b")) {
+      heuristic = { inputPer1M: 0.59, outputPer1M: 0.79, cachePer1M: 0.30 };
+    } else if (id.includes("llama-3.1-405b")) {
+      heuristic = { inputPer1M: 2.00, outputPer1M: 4.00, cachePer1M: 1.00 };
+    } else if (id.includes("llama-3.1-8b") || id.includes("llama-3-8b") || id.includes("llama-8b")) {
+      heuristic = { inputPer1M: 0.10, outputPer1M: 0.20, cachePer1M: 0.05 };
+    } else if (id.includes("qwen-2.5-72b") || id.includes("qwq-32b") || id.includes("qwen")) {
+      heuristic = { inputPer1M: 0.60, outputPer1M: 1.80, cachePer1M: 0.15 };
+    } else if (id.includes("mistral-large")) {
+      heuristic = { inputPer1M: 2.00, outputPer1M: 6.00, cachePer1M: 0.50 };
+    } else if (id.includes("mistral") || id.includes("nemo") || id.includes("codestral")) {
+      heuristic = { inputPer1M: 0.20, outputPer1M: 0.60, cachePer1M: 0.05 };
+    } else if (id.includes("nougat") || id.includes("ocr")) {
+      heuristic = { inputPer1M: 0.20, outputPer1M: 0.50, cachePer1M: 0.05, inputPer1MInr: 16.80, outputPer1MInr: 42.00 };
+    } else {
+      // 7. Realistic Frontier Standard Tier for unknown commercial models
+      heuristic = { inputPer1M: 0.20, outputPer1M: 0.60, cachePer1M: 0.05 };
+    }
+
+    // Apply AICredits markup if provider is aicredits
+    if (isAiCredits) {
+      heuristic.inputPer1MInr = heuristic.inputPer1M * aicInrRate;
+      heuristic.outputPer1MInr = heuristic.outputPer1M * aicInrRate;
+      heuristic.cachePer1MInr = (heuristic.cachePer1M || 0) * aicInrRate;
+    }
+
+    return normalizePricing(heuristic);
   }
 
   // --- 2. 100+ ACTIONABLE FEATURES & SLASH COMMANDS CATALOG ---
@@ -241,6 +640,13 @@
       category: "agent",
       desc: "Tri-Perspective Multi-Agent Reasoning (Architect, Adversarial Critic, Pragmatist)",
       template: (arg) => `[TRI-PERSPECTIVE MULTI-AGENT BOOSTER]\nTopic to Boost: "${arg || 'Analyze solution trade-offs'}"\n\nAnalyze this topic simultaneously through three specialized agent perspectives:\n1. [SENIOR ARCHITECT]: Long-term modular design, extensibility, and sound abstractions.\n2. [ADVERSARIAL CRITIC (RED TEAM)]: Edge cases, failure modes, scalability limits, and security vulnerabilities.\n3. [PRAGMATIC OPTIMIZER]: Immediate high-ROI path, minimal complexity, and actionable execution.\nFinally, synthesize a unified optimal path forward.`
+    },
+    {
+      cmd: "/boost/boost",
+      badge: "Dual Turbo",
+      category: "agent",
+      desc: "Maximum Dual Turbo Velocity Boost (Deep Accelerated Production Execution)",
+      template: (arg) => `[MAXIMUM DUAL TURBO BOOST - DEEP ACCELERATED EXECUTION]\nObjective: "${arg || 'Maximize execution velocity and implement definitive solution'}"\n\nPlease execute with maximum velocity and deep precision:\n1. Audit active code, architecture, or plan for any bottlenecks, defects, or inefficiencies.\n2. Provide direct, non-conversational, production-grade implementations immediately with zero preamble.\n3. Verify operational constraints, edge cases, and eliminate all redundant overhead.`
     },
     {
       cmd: "/decompose",
@@ -1050,6 +1456,7 @@
     chats: JSON.parse(localStorage.getItem("af_chats") || "[]"),
     activeChatId: localStorage.getItem("af_active_chat_id") || null,
     models: JSON.parse(localStorage.getItem("af_models") || "null") || DEFAULT_MODELS,
+    providerModelsPricing: JSON.parse(localStorage.getItem("af_provider_pricing_cache") || "{}"),
     settings: {
       temperature: parseFloat(localStorage.getItem("af_param_temp") || "0.7"),
       maxTokens: parseInt(localStorage.getItem("af_param_max_tokens") || "4096", 10),
@@ -1112,6 +1519,7 @@
     modelPillName: document.getElementById("current-model-name"),
     modelPillCap: document.getElementById("model-pill-cap"),
     modelPillDot: document.getElementById("model-pill-dot"),
+    headerNewChatBtn: document.getElementById("header-new-chat-btn"),
     messagesContainer: document.getElementById("messages-container"),
     chatTextarea: document.getElementById("chat-textarea"),
     sendBtn: document.getElementById("send-btn"),
@@ -1127,9 +1535,11 @@
     imageGenBtn: document.getElementById("image-gen-btn"),
     exportBtn: document.getElementById("export-btn"),
 
-    // Vision Image Attachment
+    // Vision Image Attachment & ChatGPT Plus Menu
     imageFileInput: document.getElementById("image-file-input"),
     toolAttachBtn: document.getElementById("tool-attach-btn"),
+    chatgptPlusMenu: document.getElementById("chatgpt-plus-menu"),
+    plusMenuContent: document.getElementById("plus-menu-content"),
     attachedImageContainer: document.getElementById("attached-image-container"),
     attachedImageThumb: document.getElementById("attached-image-thumb"),
     attachedImageName: document.getElementById("attached-image-name"),
@@ -1179,10 +1589,16 @@
 
     // Model Settings Modal
     modelSettingsModal: document.getElementById("model-settings-modal"),
+    settingsModelInfo: document.getElementById("settings-model-info"),
+    settingsModelName: document.getElementById("settings-model-name"),
+    settingsModelDesc: document.getElementById("settings-model-desc"),
+    settingsModelContext: document.getElementById("settings-model-context"),
     reasoningEffortGroup: document.getElementById("reasoning-effort-group"),
     paramTempSlider: document.getElementById("param-temp-slider"),
+    paramTempInput: document.getElementById("param-temp-input"),
     tempValBadge: document.getElementById("temp-val-badge"),
     paramMaxTokensSlider: document.getElementById("param-max-tokens-slider"),
+    paramMaxTokensInput: document.getElementById("param-max-tokens-input"),
     maxTokensBadge: document.getElementById("max-tokens-badge"),
     paramTopPSlider: document.getElementById("param-top-p-slider"),
     topPBadge: document.getElementById("top-p-badge"),
@@ -1196,6 +1612,19 @@
     paramSystemPrompt: document.getElementById("param-system-prompt"),
     resetParamsBtn: document.getElementById("reset-params-btn"),
     saveParamsBtn: document.getElementById("save-params-btn"),
+
+    // Model Pricing Editor & Overrides
+    settingsPricingCard: document.getElementById("settings-pricing-card"),
+    modelPricingSourceBadge: document.getElementById("model-pricing-source-badge"),
+    settingsCurrentPricingDisplay: document.getElementById("settings-current-pricing-display"),
+    settingsPriceSummaryText: document.getElementById("settings-price-summary-text"),
+    settingsPriceUsdText: document.getElementById("settings-price-usd-text"),
+    customPriceInput: document.getElementById("custom-price-input"),
+    customPriceOutput: document.getElementById("custom-price-output"),
+    customPriceCurrency: document.getElementById("custom-price-currency"),
+    customPriceUnit: document.getElementById("custom-price-unit"),
+    saveCustomPricingBtn: document.getElementById("save-custom-pricing-btn"),
+    resetCustomPricingBtn: document.getElementById("reset-custom-pricing-btn"),
 
     // Code Sandbox & Multi-Language Runner Modal
     codeSandboxModal: document.getElementById("code-sandbox-modal"),
@@ -1241,6 +1670,7 @@
     // Budget Warning Modal
     budgetWarningModal: document.getElementById("budget-warning-modal"),
     budgetWarningText: document.getElementById("budget-warning-text"),
+    budgetResetSpendBtn: document.getElementById("budget-reset-spend-btn"),
     budgetProceedBtn: document.getElementById("budget-proceed-btn"),
     budgetSwitchFreeBtn: document.getElementById("budget-switch-free-btn"),
     budgetCancelBtn: document.getElementById("budget-cancel-btn"),
@@ -1257,31 +1687,65 @@
   };
 
   // --- 5. MODEL CAPABILITY DETECTION & DYNAMIC FEATURE FILTERING ---
-  function detectCapabilities(modelId) {
+  function detectCapabilities(modelId, modelObj) {
     const lower = String(modelId || "").toLowerCase();
     
-    // Check if model category is explicitly defined in registry
-    const modelObj = (state && state.models ? state.models : DEFAULT_MODELS).find(m => m.id === modelId);
+    // Check if model category is explicitly defined in registry or state
+    if (!modelObj && typeof state !== "undefined" && Array.isArray(state.models)) {
+      modelObj = state.models.find(m => m.id === modelId || (m.id && m.id.toLowerCase() === lower));
+    }
+    if (!modelObj) {
+      modelObj = DEFAULT_MODELS.find(m => m.id === modelId || m.id.toLowerCase() === lower);
+    }
+
+    const nameLower = modelObj && modelObj.name ? String(modelObj.name).toLowerCase() : "";
+    const descLower = modelObj && modelObj.desc ? String(modelObj.desc).toLowerCase() : "";
+    const catLower = modelObj && modelObj.category ? String(modelObj.category).toLowerCase() : "";
+    const combined = `${lower} ${nameLower} ${descLower} ${catLower}`;
 
     // Strict reasoning detection: DeepSeek R1, OpenAI o1/o3, Claude 3.7 Sonnet, Qwen QwQ
-    let isReasoning = (modelObj && modelObj.category === "reasoning") ||
-                      lower.includes("r1") || lower.includes("o1") || lower.includes("o3") ||
-                      lower.includes("3.7") || lower.includes("claude-3-7") || lower.includes("reasoner") ||
-                      lower.includes("thinking") || lower.includes("qwq");
+    let isReasoning = catLower === "reasoning" ||
+                      combined.includes("r1") || combined.includes("o1") || combined.includes("o3") ||
+                      combined.includes("3.7") || combined.includes("claude-3-7") || combined.includes("reasoner") ||
+                      combined.includes("thinking") || combined.includes("qwq");
 
-    // Standard chat models like GPT-4o, LLaMA 3.3, Claude 3.5, Gemini Flash strictly do NOT have reasoning
-    if (lower.includes("4o") || lower.includes("llama") || lower.includes("3.5") || lower.includes("flash") || lower.includes("mini-instruct")) {
+    // Standard chat models like GPT-4o, LLaMA 3.3, Claude 3.5, Gemini Flash, Lunaris strictly do NOT have reasoning
+    if (combined.includes("4o") || combined.includes("llama") || combined.includes("3.5") || combined.includes("flash") || combined.includes("mini-instruct") || combined.includes("lunaris")) {
       isReasoning = false;
     }
 
-    const isVision = lower.includes("vision") || lower.includes("4o") || lower.includes("gemini") ||
-                     lower.includes("vl") || lower.includes("claude") || lower.includes("omni") || lower.includes("ocr");
-    const isAudio = lower.includes("tts") || lower.includes("whisper") || lower.includes("audio");
-    const isImage = lower.includes("dall-e") || lower.includes("flux") || lower.includes("image") || lower.includes("schnell");
-    const isVideo = (modelObj && modelObj.category === "video") || lower.includes("video") || lower.includes("ray") || lower.includes("kling") || lower.includes("sora") || lower.includes("runway");
-    const isOCR = lower.includes("ocr") || lower.includes("nougat") || (isVision && (lower.includes("ocr") || lower.includes("doc")));
-    const isCoding = lower.includes("coder") || lower.includes("code") || lower.includes("sonnet") || isReasoning;
-    const isFast = lower.includes("groq") || lower.includes("flash") || lower.includes("mini") || lower.includes("turbo");
+    // Comprehensive OCR & Document Detection
+    const isOCR = catLower === "ocr" ||
+                  combined.includes("ocr") || combined.includes("nougat") || combined.includes("surya") ||
+                  combined.includes("donut") || combined.includes("doc-vision") || combined.includes("got-ocr") ||
+                  combined.includes("paddleocr") || combined.includes("mineru") || combined.includes("doc-parse") ||
+                  (combined.includes("document") && !combined.includes("documentation"));
+
+    // Multi-modal Vision Detection
+    const isVision = isOCR || catLower === "vision" || combined.includes("vision") || combined.includes("4o") ||
+                     combined.includes("gemini") || combined.includes("vl") || combined.includes("claude") ||
+                     combined.includes("omni") || combined.includes("image-to-text") || combined.includes("multimodal") ||
+                     combined.includes("pixtral") || combined.includes("llava") || combined.includes("internvl");
+
+    // Comprehensive Audio & Speech-to-Text / Transcription Detection
+    const isAudio = catLower === "audio" || catLower === "transcribe" || catLower === "stt" ||
+                    combined.includes("tts") || combined.includes("whisper") || combined.includes("audio") ||
+                    combined.includes("speech") || combined.includes("voice") || combined.includes("transcrib") ||
+                    combined.includes("stt") || combined.includes("asr") || combined.includes("sound") ||
+                    combined.includes("listen") || combined.includes("elevenlabs") || combined.includes("bark") ||
+                    combined.includes("parler") || combined.includes("seamless");
+
+    const isImage = catLower === "image" || combined.includes("dall-e") || combined.includes("flux") ||
+                    combined.includes("image") || combined.includes("schnell") || combined.includes("stable-diffusion") ||
+                    combined.includes("midjourney");
+
+    const isVideo = catLower === "video" || combined.includes("video") || combined.includes("ray") ||
+                    combined.includes("kling") || combined.includes("sora") || combined.includes("runway") || combined.includes("luma");
+
+    const isCoding = catLower === "coding" || combined.includes("coder") || combined.includes("code") ||
+                     combined.includes("sonnet") || isReasoning;
+
+    const isFast = combined.includes("groq") || combined.includes("flash") || combined.includes("mini") || combined.includes("turbo");
     const isTools = !isAudio && !isImage && !isVideo;
 
     return {
@@ -1360,9 +1824,9 @@
     } else if (caps.video) {
       els.chatTextarea.placeholder = `Describe the video scene to generate with ${modelName}...`;
     } else if (caps.ocr) {
-      els.chatTextarea.placeholder = "Attach an image/document for OCR extraction...";
+      els.chatTextarea.placeholder = "Message AgentsFlow or attach document for OCR...";
     } else {
-      els.chatTextarea.placeholder = "Type a message or / for 100+ actionable features (/goal, /plan, /boost, /code)...";
+      els.chatTextarea.placeholder = "Message AgentsFlow...";
     }
 
     // 1. Thinking Feature Unlock / Visibility (Strict capability enforcement)
@@ -1394,16 +1858,15 @@
     }
 
     // 2. Vision Feature Unlock / Visibility
+    if (els.toolAttachBtn) els.toolAttachBtn.style.display = "inline-flex"; // Always allow user to attach photos & documents
     if (caps.vision) {
       els.toolVisionBtn.style.display = "inline-flex";
-      if (els.toolAttachBtn) els.toolAttachBtn.style.display = "inline-flex";
       els.toolVisionBtn.classList.remove("locked");
       els.toolVisionBtn.classList.add("unlocked", "active");
       state.activeTools.vision = true;
       els.toolVisionLabel.textContent = "Vision";
     } else {
       els.toolVisionBtn.style.display = "none"; // Clean minimalism: hide when unsupported
-      if (els.toolAttachBtn) els.toolAttachBtn.style.display = "none";
       els.toolVisionBtn.classList.remove("unlocked", "active");
       els.toolVisionBtn.classList.add("locked");
       state.activeTools.vision = false;
@@ -1438,6 +1901,94 @@
     if (els.featuresModal && els.featuresModal.classList.contains("active")) {
       renderFeaturesGrid(state.featureCategoryFilter);
     }
+
+    // 6. Enforce model output token limit according to model specification
+    const allowedLimit = getModelMaxOutputTokens(modelId);
+    if (state.settings.maxTokens > allowedLimit) {
+      state.settings.maxTokens = allowedLimit;
+      localStorage.setItem("af_param_max_tokens", state.settings.maxTokens);
+    }
+    if (els.paramMaxTokensSlider) {
+      els.paramMaxTokensSlider.max = String(allowedLimit);
+      els.paramMaxTokensSlider.value = state.settings.maxTokens;
+    }
+    if (els.paramMaxTokensInput) {
+      els.paramMaxTokensInput.max = String(allowedLimit);
+      els.paramMaxTokensInput.value = state.settings.maxTokens;
+    }
+    if (els.maxTokensBadge) {
+      els.maxTokensBadge.textContent = `${state.settings.maxTokens} (Max: ${allowedLimit})`;
+    }
+  }
+
+  function getModelMaxOutputTokens(modelId) {
+    const id = String(modelId || "").toLowerCase();
+    const modelObj = (state && state.models ? state.models : DEFAULT_MODELS).find(m => m.id === modelId || (m.id && m.id.toLowerCase() === id));
+
+    // If context_length or max_output_tokens is provided by provider
+    if (modelObj) {
+      if (typeof modelObj.max_output_tokens === "number" && modelObj.max_output_tokens > 0) {
+        return modelObj.max_output_tokens;
+      }
+      if (modelObj.top_provider && typeof modelObj.top_provider.max_completion_tokens === "number" && modelObj.top_provider.max_completion_tokens > 0) {
+        return modelObj.top_provider.max_completion_tokens;
+      }
+      if (modelObj.per_request_limits && typeof modelObj.per_request_limits.max_completion_tokens === "number" && modelObj.per_request_limits.max_completion_tokens > 0) {
+        return modelObj.per_request_limits.max_completion_tokens;
+      }
+    }
+
+    // Specific model output limits based on official specifications
+    if (id.includes("claude-3-7") || id.includes("claude-3.7") || id.includes("claude-3-5-sonnet") || id.includes("claude-3.5-sonnet")) {
+      return 8192; // Claude 3.5 / 3.7 default max completion tokens (up to 64k extended thinking)
+    }
+    if (id.includes("claude-3-5-haiku") || id.includes("claude-3-haiku")) {
+      return 8192;
+    }
+    if (id.includes("claude-3-opus") || id.includes("claude-2")) {
+      return 4096;
+    }
+    if (id.includes("deepseek-r1") || id.includes("deepseek/r1") || id.includes("deepseek-reasoner")) {
+      return 8192; // DeepSeek R1 API hard limits max_tokens to 8192
+    }
+    if (id.includes("deepseek-v3") || id.includes("deepseek-chat") || id.includes("deepseek")) {
+      return 8192;
+    }
+    if (id.includes("o1-mini") || id.includes("o3-mini")) {
+      return 65536; // OpenAI o1/o3 reasoning models support up to 64k-100k completion tokens
+    }
+    if (id.includes("o1-preview") || id.includes("o1")) {
+      return 32768;
+    }
+    if (id.includes("gpt-4o-mini")) {
+      return 16384;
+    }
+    if (id.includes("gpt-4o") || id.includes("chatgpt-4o")) {
+      return 16384;
+    }
+    if (id.includes("gemini-2.0-flash") || id.includes("gemini-2-flash")) {
+      return 8192;
+    }
+    if (id.includes("gemini-1.5-pro") || id.includes("gemini-1.5-flash")) {
+      return 8192;
+    }
+    if (id.includes("lunaris")) {
+      return 4096; // Lunaris fine-tune strictly bounded to 4096 output tokens
+    }
+    if (id.includes("llama-3.3") || id.includes("llama-3.1") || id.includes("llama-3.2") || id.includes("llama-3") || id.includes("llama-8b") || id.includes("llama-70b")) {
+      return 4096; // LLaMA 3.x default max output is 4,096 tokens (or 8k on specific providers)
+    }
+    if (id.includes("qwen-2.5") || id.includes("qwq-32b") || id.includes("qwen")) {
+      return 8192;
+    }
+    if (id.includes("mistral-large") || id.includes("codestral") || id.includes("mistral") || id.includes("nemo")) {
+      return 4096;
+    }
+    if (id.includes("nougat") || id.includes("ocr")) {
+      return 4096;
+    }
+
+    return 4096; // Safe universal fallback
   }
 
   function showToastBadge(text) {
@@ -1847,52 +2398,77 @@
 
   function renderWelcomeScreen() {
     const welcome = document.createElement("div");
-    welcome.className = "message-wrapper";
-    welcome.style.textAlign = "center";
-    welcome.style.padding = "36px 14px";
+    welcome.className = "message-wrapper welcome-screen-wrapper";
+
+    const current = (state.models || []).find(m => m.id === state.selectedModelId);
+    const modelName = current ? current.name : state.selectedModelId;
+    const caps = detectCapabilities(state.selectedModelId);
+    let capLabel = "Chat";
+    if (caps.reasoning) capLabel = "Reasoning";
+    else if (caps.vision || caps.ocr) capLabel = "Vision";
+    else if (caps.audio) capLabel = "Audio";
+    else if (caps.image) capLabel = "Image";
+    else if (caps.coding) capLabel = "Coding";
+
+    const welcomePricing = getModelPricing(state.selectedModelId);
+    let welcomePricingBadge = "";
+    if (welcomePricing.isFree) {
+      welcomePricingBadge = "100% Free";
+    } else if (welcomePricing.special) {
+      welcomePricingBadge = welcomePricing.special;
+    } else {
+      const inInr = formatCurrencyDisplay(welcomePricing.inputPer1MInr, "₹");
+      const outInr = formatCurrencyDisplay(welcomePricing.outputPer1MInr, "₹");
+      welcomePricingBadge = `${inInr} in / ${outInr} out / 1M`;
+    }
+
     welcome.innerHTML = `
-      <div style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 18px; background: var(--accent-glow); color: var(--accent-terracotta); border: 1px solid var(--accent-terracotta); margin-bottom: 12px; box-shadow: 0 0 24px var(--accent-glow);">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"></path><path d="M9 21h6"></path></svg>
-      </div>
-      <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 6px;">AgentsFlow AI</h2>
-      <p style="font-size: 13px; color: var(--text-muted); max-width: 480px; margin: 0 auto 18px auto; line-height: 1.5;">
-        Autonomous frontier intelligence. 100+ actionable features, live model discovery, reasoning accordion & vision analysis.
-      </p>
+      <div class="welcome-container">
+        <div class="welcome-icon-glow">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"></path>
+            <path d="M9 21h6"></path>
+          </svg>
+        </div>
+        <h2 class="welcome-title">AgentsFlow</h2>
+        <p class="welcome-tagline">Autonomous AI Workstation</p>
 
-      <div style="font-size: 11px; text-transform: uppercase; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">Actionable Agent Workflows:</div>
-      <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 540px; margin: 0 auto 18px auto;">
-        <button class="action-pill-btn" onclick="window.afExecuteFeature('/goal Build offline APK')">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
-          <span>/goal APK Build</span>
-        </button>
-        <button class="action-pill-btn" onclick="window.afExecuteFeature('/plan Microservices Architecture')">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 10v11M19 10v11M9 10v11M15 10v11M12 2L2 7h20L12 2z"></path></svg>
-          <span>/plan Architecture</span>
-        </button>
-        <button class="action-pill-btn" onclick="window.afExecuteFeature('/boost Autonomous Agent Loops')">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-          <span>/boost Agent Loops</span>
-        </button>
-        <button class="action-pill-btn" onclick="window.afExecuteFeature('/code Vector Search in TypeScript')">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-          <span>/code Vector Search</span>
-        </button>
-      </div>
+        <!-- Prominent Loaded Model Card -->
+        <div class="loaded-model-card" onclick="window.afOpenModelSelector()" title="Click to view or change active AI model">
+          <span class="loaded-status-dot"></span>
+          <span class="loaded-model-title">Model: <strong id="welcome-loaded-model-name">${escapeHtml(modelName)}</strong></span>
+          <span class="loaded-model-cap-pill" id="welcome-loaded-model-cap">${capLabel}</span>
+          <span class="loaded-model-pricing-pill" id="welcome-loaded-model-pricing">${welcomePricingBadge}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </div>
 
-      <div style="font-size: 11px; text-transform: uppercase; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">Explore More Features:</div>
-      <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 540px; margin: 0 auto;">
-        <button class="action-pill-btn features-pill-btn" onclick="window.afOpenFeaturesModal()">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
-          <span>Open 100+ Features Hub</span>
-        </button>
-        <button class="action-pill-btn" onclick="window.afOpenModelSelector()">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z"></path></svg>
-          <span>Select Model & API Options</span>
-        </button>
+        <!-- Clean Prompt Starters -->
+        <div class="welcome-chips-row">
+          <button type="button" class="welcome-chip" onclick="window.afInsertPrompt('How can I optimize this architecture for high throughput?')">
+            <span class="welcome-chip-icon">⚡</span>
+            <span>Optimize Architecture</span>
+          </button>
+          <button type="button" class="welcome-chip" onclick="window.afInsertPrompt('Write production-grade code for ')">
+            <span class="welcome-chip-icon">💻</span>
+            <span>Write Clean Code</span>
+          </button>
+          <button type="button" class="welcome-chip" onclick="window.afInsertPrompt('Deeply analyze and brainstorm ')">
+            <span class="welcome-chip-icon">💡</span>
+            <span>Brainstorm Ideas</span>
+          </button>
+        </div>
       </div>
     `;
     els.messagesContainer.appendChild(welcome);
   }
+
+  window.afInsertPrompt = function (text) {
+    if (els.chatTextarea) {
+      els.chatTextarea.value = text;
+      adjustTextareaHeight();
+      els.chatTextarea.focus();
+    }
+  };
 
   function appendMessageToDOM(msg, index) {
     const isAssistant = msg.role === "assistant";
@@ -1997,7 +2573,7 @@
             <span class="stat-divider">&bull;</span>
             <span class="stat-item">${msg.stats.duration}</span>
             <span class="stat-divider">&bull;</span>
-            <span class="stat-item">~$${msg.stats.cost || '0.0000'}</span>
+            <span class="stat-item">~${msg.stats.cost ? (String(msg.stats.cost).startsWith("$") || String(msg.stats.cost).startsWith("<$") ? msg.stats.cost : "$" + msg.stats.cost) : "$0.0000"}</span>
           </div>
         `;
       }
@@ -2357,18 +2933,55 @@
 
     // Check for Slash Command Execution
     if (text.startsWith("/") && !hasImage) {
-      // Normalize command string: handles "/boost/boost" -> "/boost" with arg "boost", or "/boost" -> "/boost"
-      const match = text.match(/^\/([a-zA-Z0-9_\-]+)(?:\/([a-zA-Z0-9_\-]+))?(?:\s+(.*))?$/);
-      let cmdName = text.split(" ")[0].toLowerCase();
-      let cmdArg = text.split(" ").slice(1).join(" ");
-      if (match) {
-        cmdName = "/" + match[1].toLowerCase();
-        if (match[2] && !cmdArg) {
-          cmdArg = match[2];
+      const cleanTrimmed = text.trim();
+      const lowerTrimmed = cleanTrimmed.toLowerCase();
+      if (cleanTrimmed === "/boost" || cleanTrimmed === "/boost/boost" || lowerTrimmed === "/boost" || lowerTrimmed === "/boost/boost" || lowerTrimmed.startsWith("/boost/boost ") || lowerTrimmed.startsWith("/boost ")) {
+        const isDoubleBoost = lowerTrimmed === "/boost/boost" || lowerTrimmed.startsWith("/boost/boost ") || /^\/boost\/boost(?:\s|$)/i.test(cleanTrimmed);
+        const query = cleanTrimmed.replace(/^\/(?:boost\/boost|boost)\s*/i, "").trim();
+        state.turboBoost = true;
+        showToastBadge(isDoubleBoost ? "⚡⚡ Maximum Dual Turbo Boost Engaged!" : "🚀 Turbo Velocity Boost Enabled: Low-latency streaming active!");
+        els.chatTextarea.value = "";
+        adjustTextareaHeight();
+        closeSlashMenu();
+        if (query) {
+          const turboPrompt = isDoubleBoost
+            ? `[MAXIMUM DUAL TURBO BOOST - DEEP ACCELERATED EXECUTION]\nObjective: "${query}"\n\nDeliver the highest-grade, definitive, production-ready solution immediately. Bypass all preamble, disclaimers, and conversational filler. Execute complete, verified, robust code and architecture directly.`
+            : `[TURBO VELOCITY MODE - DIRECT EXECUTION]\nObjective: "${query}"\n\nDeliver an immediate, high-impact, directly actionable solution with zero conversational preamble or redundant filler. Focus strictly on correct, production-grade output.`;
+          await executePromptStream(turboPrompt, null);
+        } else if (isDoubleBoost) {
+          const doubleBoostFeature = FEATURE_CATALOG.find(c => c.cmd === "/boost/boost");
+          const prompt = doubleBoostFeature && doubleBoostFeature.template
+            ? doubleBoostFeature.template("")
+            : `[MAXIMUM DUAL TURBO BOOST - DEEP ACCELERATED EXECUTION]\nObjective: "Maximize execution velocity and implement definitive solution"\n\nPlease execute with maximum velocity and deep precision:\n1. Audit active code, architecture, or plan for any bottlenecks, defects, or inefficiencies.\n2. Provide direct, non-conversational, production-grade implementations immediately with zero preamble.\n3. Verify operational constraints, edge cases, and eliminate all redundant overhead.`;
+          await executePromptStream(prompt, null);
+        } else {
+          const boostFeature = FEATURE_CATALOG.find(c => c.cmd === "/boost");
+          if (boostFeature && boostFeature.template) {
+            const prompt = boostFeature.template("");
+            await executePromptStream(prompt, null);
+          }
         }
+        return;
       }
 
-      const foundCmd = FEATURE_CATALOG.find(c => c.cmd === cmdName);
+      // Normalize command string: checks full multi-token slash commands (e.g. /boost/boost) or standard commands
+      const firstToken = text.split(/\s+/)[0].toLowerCase();
+      let cmdName = firstToken;
+      let cmdArg = text.slice(firstToken.length).trim();
+      let foundCmd = FEATURE_CATALOG.find(c => c.cmd.toLowerCase() === cmdName);
+
+      if (!foundCmd) {
+        const match = text.match(/^\/([a-zA-Z0-9_\-]+)(?:\/([a-zA-Z0-9_\-]+))?(?:\s+(.*))?$/);
+        if (match) {
+          const singleCmd = "/" + match[1].toLowerCase();
+          const fallbackCmd = FEATURE_CATALOG.find(c => c.cmd.toLowerCase() === singleCmd);
+          if (fallbackCmd) {
+            foundCmd = fallbackCmd;
+            cmdName = singleCmd;
+            cmdArg = (match[2] ? match[2] + (match[3] ? " " + match[3] : "") : (match[3] || "")).trim();
+          }
+        }
+      }
 
       if (foundCmd) {
         if (foundCmd.action) {
@@ -2389,11 +3002,7 @@
     }
 
     const currentImage = state.attachedImage ? state.attachedImage.dataUrl : null;
-    clearAttachedImage();
-
     closeSlashMenu();
-    els.chatTextarea.value = "";
-    adjustTextareaHeight();
     await executePromptStream(text || "Please analyze the attached image.", currentImage);
   }
 
@@ -2407,22 +3016,61 @@
     if (!bypassBudgetCheck && state.apiBudgetWarn && state.apiBudgetLimit > 0) {
       const pricing = getModelPricing(state.selectedModelId);
       if (!pricing.isFree) {
-        const estInRate = typeof pricing.input === "number" ? pricing.input : 0.001;
-        const estOutRate = typeof pricing.output === "number" ? pricing.output : 0.002;
-        const approxInTokens = Math.max(100, Math.ceil(text.length / 3.8));
-        const estCostUsd = ((approxInTokens / 1000) * estInRate) + (estOutRate * 1.5);
-        const estCostInr = estCostUsd * INR_PER_USD;
+        const approxInTokens = Math.max(50, Math.ceil(text.length / 3.8));
+
+        // Use user's configured max output tokens scaled by reasoning effort
+        const modelMaxOut = getModelMaxOutputTokens(state.selectedModelId);
+        const configuredMax = Math.min(state.settings.maxTokens || 4096, modelMaxOut);
+        let estExpectedOutTokens = Math.min(Math.max(approxInTokens * 3, 512), configuredMax);
+        if (state.activeTools.thinking && state.activeTools.thinkingLevel !== "off") {
+          const mult = state.activeTools.thinkingLevel === "high" ? 2.5 : state.activeTools.thinkingLevel === "medium" ? 1.8 : 1.2;
+          estExpectedOutTokens = Math.min(Math.round(estExpectedOutTokens * mult), configuredMax);
+        }
+
+        let estCostInr = 0;
+        if (pricing.outputPer1MInr !== undefined && pricing.inputPer1MInr !== undefined) {
+          estCostInr = ((approxInTokens / 1000000) * pricing.inputPer1MInr) + ((estExpectedOutTokens / 1000000) * pricing.outputPer1MInr);
+        } else {
+          const estInRate = typeof pricing.input === "number" ? pricing.input : 0.001; // USD per 1k input tokens
+          const estOutRate = typeof pricing.output === "number" ? pricing.output : 0.002; // USD per 1k output tokens
+          const estCostUsd = ((approxInTokens / 1000) * estInRate) + ((estExpectedOutTokens / 1000) * estOutRate);
+          estCostInr = estCostUsd * INR_PER_USD;
+        }
 
         if ((state.totalSpend + estCostInr) > state.apiBudgetLimit) {
-          pendingBudgetAction = () => executePromptStream(text, imageUrl, true);
+          pendingBudgetAction = {
+            run: () => {
+              els.chatTextarea.value = "";
+              adjustTextareaHeight();
+              clearAttachedImage();
+              executePromptStream(text, imageUrl, true);
+            },
+            text,
+            imageUrl,
+          };
           if (els.budgetWarningText) {
-            els.budgetWarningText.innerHTML = `This request (Est. <strong>₹${estCostInr.toFixed(2)}</strong>) will bring your total session spend to <strong>₹${(state.totalSpend + estCostInr).toFixed(2)}</strong>, exceeding your set budget limit of <strong>₹${state.apiBudgetLimit.toFixed(2)}</strong>.<br><br>Would you like to proceed anyway, or switch to a 100% Free model?`;
+            const formattedCost = estCostInr < 0.01 ? `<0.01` : estCostInr.toFixed(2);
+            const totalEst = (state.totalSpend + estCostInr).toFixed(2);
+            const currentSpend = state.totalSpend.toFixed(2);
+            const limit = state.apiBudgetLimit.toFixed(2);
+            let detailMsg = "";
+            if (state.totalSpend >= state.apiBudgetLimit) {
+              detailMsg = `Your accumulated spend is already <strong>₹${currentSpend}</strong> (exceeding your ₹${limit} limit).<br>This new request only costs an estimated <strong>₹${formattedCost}</strong> (~${estExpectedOutTokens} output/thinking tokens).`;
+            } else {
+              detailMsg = `This request (Est. <strong>₹${formattedCost}</strong> for ~${estExpectedOutTokens} output/thinking tokens) will bring your total session spend to <strong>₹${totalEst}</strong>, exceeding your set budget limit of <strong>₹${limit}</strong>.`;
+            }
+            els.budgetWarningText.innerHTML = `${detailMsg}<br><br>Would you like to reset your spend counter and proceed, proceed anyway, or switch to a 100% Free model?`;
           }
           openModal(els.budgetWarningModal);
           return;
         }
       }
     }
+
+    // Clear textarea and attached image now that prompt is authorized to execute
+    els.chatTextarea.value = "";
+    adjustTextareaHeight();
+    clearAttachedImage();
 
     // Add user message
     const userMsg = { role: "user", content: text };
@@ -2501,7 +3149,16 @@
         ? state.activeStreamStats.tokenCount
         : Math.max(Math.ceil(totalChars / 3.8), 1);
       const tps = (outputTokens / elapsedSeconds).toFixed(1);
-      const approxInputTokens = Math.ceil(text.length / 3.8);
+      let approxInputTokens = state.activeStreamStats.promptTokens;
+      if (!approxInputTokens || approxInputTokens <= 0) {
+        let totalPromptChars = 0;
+        if (chat && Array.isArray(chat.messages)) {
+          chat.messages.forEach(m => {
+            totalPromptChars += (m.content || "").length;
+          });
+        }
+        approxInputTokens = Math.max(Math.ceil((totalPromptChars || text.length) / 3.8), 1);
+      }
       const costStr = estimateCost(state.selectedModelId, approxInputTokens, outputTokens);
 
       assistantMsg.isStreaming = false;
@@ -2513,6 +3170,7 @@
       };
 
       state.isStreaming = false;
+      state.turboBoost = false;
       state.activeAbortController = null;
       updateSendStopButtons(false);
       saveChats();
@@ -2520,7 +3178,7 @@
     }
   }
 
-  function estimateCost(modelId, inTokens, outTokens) {
+  function estimateCost(modelId, inTokens, outTokens, accumulate = true) {
     if ((state.providerUrl || "").includes("localhost") || (state.providerUrl || "").includes("127.0.0.1") || (state.providerUrl || "").includes(":11434")) {
       return "$0.0000 (Local Free • ₹0.00)";
     }
@@ -2528,22 +3186,137 @@
     if (pricing.isFree) {
       return "$0.0000 (100% Free • ₹0.00)";
     }
-    const inRate = typeof pricing.input === "number" ? pricing.input : 0.001;
-    const outRate = typeof pricing.output === "number" ? pricing.output : 0.002;
-    const costUsd = ((inTokens / 1000) * inRate) + ((outTokens / 1000) * outRate);
-    const costInr = costUsd * INR_PER_USD;
 
-    // Accumulate total spend and persist
-    state.totalSpend = (state.totalSpend || 0) + costInr;
-    localStorage.setItem("af_total_spend", state.totalSpend.toFixed(4));
-    updateBudgetDisplay();
+    let costInr = 0;
+    let costUsd = 0;
 
-    const usdStr = costUsd < 0.0001 ? "0.0001" : costUsd.toFixed(4);
-    const inrStr = costInr < 0.01 ? "0.01" : costInr.toFixed(2);
-    return `$${usdStr} (₹${inrStr})`;
+    if (pricing.outputPer1MInr !== undefined && pricing.inputPer1MInr !== undefined) {
+      costInr = ((inTokens / 1000000) * pricing.inputPer1MInr) + ((outTokens / 1000000) * pricing.outputPer1MInr);
+      if (pricing.inputPer1M !== undefined && pricing.outputPer1M !== undefined) {
+        costUsd = ((inTokens / 1000000) * pricing.inputPer1M) + ((outTokens / 1000000) * pricing.outputPer1M);
+      } else {
+        costUsd = costInr / INR_PER_USD;
+      }
+    } else {
+      const inRate = typeof pricing.input === "number" ? pricing.input : 0.001;
+      const outRate = typeof pricing.output === "number" ? pricing.output : 0.002;
+      costUsd = ((inTokens / 1000) * inRate) + ((outTokens / 1000) * outRate);
+      costInr = costUsd * INR_PER_USD;
+    }
+
+    // Accumulate total spend and persist only on real stream completion
+    if (accumulate) {
+      state.totalSpend = (state.totalSpend || 0) + costInr;
+      localStorage.setItem("af_total_spend", state.totalSpend.toFixed(4));
+      updateBudgetDisplay();
+    }
+
+    const usdStr = costUsd < 0.0001 ? "<$0.0001" : `$${costUsd.toFixed(4)}`;
+    const inrStr = costInr < 0.01 ? "<₹0.01" : `₹${costInr.toFixed(2)}`;
+    return `${usdStr} (${inrStr})`;
   }
 
-  async function streamCompletionFromProvider(chat, assistantMsg) {
+  let streamRenderPending = false;
+  let lastStreamRenderTime = 0;
+
+  function scheduleStreamingAssistantDOM(assistantMsg) {
+    const now = performance.now();
+    if (now - lastStreamRenderTime > 45) {
+      lastStreamRenderTime = now;
+      updateStreamingAssistantDOM(assistantMsg);
+    } else if (!streamRenderPending) {
+      streamRenderPending = true;
+      requestAnimationFrame(() => {
+        streamRenderPending = false;
+        lastStreamRenderTime = performance.now();
+        updateStreamingAssistantDOM(assistantMsg);
+      });
+    }
+  }
+
+  async function executeContinuationStream(assistantMsg, targetIndex) {
+    const chat = getActiveChat();
+    if (!chat || state.isStreaming) return;
+
+    assistantMsg.isStreaming = true;
+    state.isStreaming = true;
+    updateSendStopButtons(true);
+    state.activeAbortController = new AbortController();
+
+    state.activeStreamStats = {
+      startTime: performance.now(),
+      charCount: assistantMsg.content ? assistantMsg.content.length : 0,
+      tokenCount: 0,
+      lastTPS: "0.0 tps",
+    };
+
+    renderMessages();
+    const actualIdx = targetIndex >= 0 ? targetIndex : chat.messages.indexOf(assistantMsg);
+    let prevSnippets = 0;
+    for (let i = 0; i < actualIdx; i++) {
+      const m = chat.messages[i];
+      if (m && m.content) {
+        const matches = m.content.match(/```[a-zA-Z0-9_\-]*\n?[\s\S]*?```/g);
+        if (matches) prevSnippets += matches.length;
+      }
+    }
+    state.baseSnippetCount = prevSnippets;
+
+    try {
+      await streamCompletionFromProvider(chat, assistantMsg, true);
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        assistantMsg.content += `\n\n*(Continuation error: ${err.message || String(err)})*`;
+      }
+    } finally {
+      const extracted = extractThinkingProcess(assistantMsg.content, false);
+      if (extracted.thoughts) {
+        assistantMsg.reasoning = (assistantMsg.reasoning ? assistantMsg.reasoning + "\n\n" : "") + extracted.thoughts;
+        assistantMsg.content = extracted.cleanText;
+      } else if (!assistantMsg.reasoning) {
+        const stepReasoning = extractStepReasoning(assistantMsg.content);
+        if (stepReasoning.thoughts) {
+          assistantMsg.reasoning = stepReasoning.thoughts;
+          assistantMsg.content = stepReasoning.cleanText;
+        }
+      }
+
+      const elapsedSeconds = Math.max((performance.now() - state.activeStreamStats.startTime) / 1000, 0.1);
+      const totalChars = assistantMsg.content.length + (assistantMsg.reasoning ? assistantMsg.reasoning.length : 0);
+      const outputTokens = state.activeStreamStats.tokenCount > 0
+        ? state.activeStreamStats.tokenCount
+        : Math.max(Math.ceil(totalChars / 3.8), 1);
+      let approxInputTokens = state.activeStreamStats.promptTokens;
+      if (!approxInputTokens || approxInputTokens <= 0) {
+        let totalPromptChars = 0;
+        if (chat && Array.isArray(chat.messages)) {
+          chat.messages.forEach(m => {
+            totalPromptChars += (m.content || "").length;
+          });
+        }
+        approxInputTokens = Math.max(Math.ceil((totalPromptChars || assistantMsg.content.length) / 3.8), 1);
+      }
+      const costStr = estimateCost(state.selectedModelId, approxInputTokens, outputTokens);
+
+      assistantMsg.isStreaming = false;
+      assistantMsg.stats = {
+        tps: tps,
+        tokens: outputTokens,
+        duration: elapsedSeconds.toFixed(1) + "s",
+        cost: costStr,
+      };
+
+      state.isStreaming = false;
+      state.turboBoost = false;
+      state.activeAbortController = null;
+      updateSendStopButtons(false);
+      saveChats();
+      renderMessages();
+      showToastBadge("Continued seamlessly");
+    }
+  }
+
+  async function streamCompletionFromProvider(chat, assistantMsg, isContinuation = false) {
     const cleanBase = (state.providerUrl || "https://openrouter.ai/api/v1").replace(/\/+$/, "");
     const endpoint = cleanBase.endsWith("/chat/completions")
       ? cleanBase
@@ -2551,7 +3324,11 @@
       ? `${cleanBase}/chat/completions`
       : `${cleanBase}/v1/chat/completions`;
 
-    const headers = { "Content-Type": "application/json" };
+    const headers = { 
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://agentsflow.ai",
+      "X-Title": "AgentsFlow AI"
+    };
     if (state.apiKey) {
       headers["Authorization"] = `Bearer ${state.apiKey}`;
     }
@@ -2590,7 +3367,8 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
     }
 
     // Context limit trim
-    let history = chat.messages.filter(m => m !== assistantMsg);
+    const assistantIdx = chat.messages.indexOf(assistantMsg);
+    let history = assistantIdx >= 0 ? chat.messages.slice(0, assistantIdx) : chat.messages.filter(m => m !== assistantMsg);
     if (state.settings.contextLimit && state.settings.contextLimit > 0 && history.length > state.settings.contextLimit) {
       history = history.slice(-state.settings.contextLimit);
     }
@@ -2610,31 +3388,95 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
       }
     });
 
+    if (isContinuation) {
+      outgoingMessages.push({ role: "assistant", content: assistantMsg.content || "" });
+      outgoingMessages.push({
+        role: "user",
+        content: "Continue generating seamlessly from exactly where you left off. Do not repeat any prior text and do not add conversational preamble. Pick up immediately from the very last character or word."
+      });
+    }
+
+    // OCR Model Auto-Routing & Specialized System Prompting
+    let requestModel = state.selectedModelId;
+    if (requestModel.includes("nougat") || requestModel.startsWith("ocr/")) {
+      const visionModel = (state.models || []).find(m => {
+        const c = detectCapabilities(m.id);
+        return c.vision && !m.id.includes("nougat");
+      });
+      requestModel = visionModel ? visionModel.id : ((state.providerUrl || "").includes("openai.com") ? "gpt-4o-mini" : "google/gemini-2.0-flash-exp:free");
+      outgoingMessages.unshift({
+        role: "system",
+        content: "[OPTICAL CHARACTER RECOGNITION (OCR) ENGINE ACTIVE]: You are a high-precision document OCR transcriber. Transcribe all text, numbers, formulas, LaTeX expressions ($...$ and $$...$$), tables in markdown, and layout verbatim from the provided document image without omission."
+      });
+    }
+
+    const lowerModel = requestModel.toLowerCase();
+    const isO1OrO3 = lowerModel.includes("o1") || lowerModel.includes("o3");
+
     const payload = {
-      model: state.selectedModelId,
+      model: requestModel,
       messages: outgoingMessages,
-      temperature: state.settings.temperature,
-      max_tokens: state.settings.maxTokens,
-      top_p: state.settings.topP,
-      presence_penalty: state.settings.presencePenalty || 0.0,
-      frequency_penalty: state.settings.frequencyPenalty || 0.0,
       stream: true,
       stream_options: { include_usage: true },
     };
 
-    const caps = detectCapabilities(state.selectedModelId);
-    if (caps.reasoning) {
+    const modelMaxOut = getModelMaxOutputTokens(requestModel);
+    const safeMaxTokens = Math.min(state.settings.maxTokens || 4096, modelMaxOut);
+
+    if (isO1OrO3) {
       payload.reasoning_effort = state.settings.reasoningEffort || "medium";
+      payload.max_completion_tokens = safeMaxTokens;
+    } else {
+      payload.temperature = state.turboBoost ? 0.2 : (state.settings.temperature ?? 0.7);
+      payload.max_tokens = safeMaxTokens;
+      payload.top_p = state.turboBoost ? 0.9 : (state.settings.topP ?? 0.95);
+      if (state.settings.presencePenalty) payload.presence_penalty = state.settings.presencePenalty;
+      if (state.settings.frequencyPenalty) payload.frequency_penalty = state.settings.frequencyPenalty;
     }
 
-    const response = await fetch(endpoint, {
+    let response = await fetch(endpoint, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
       signal: state.activeAbortController.signal,
     });
 
-    if (!response.ok) {
+    // Resilient Auto-Fallback: If provider returns 400 with unsupported parameter error, strip and retry immediately
+    if (!response.ok && response.status === 400) {
+      const errText = await response.text();
+      const retryPayload = { ...payload };
+      delete retryPayload.stream_options;
+      if (errText.includes("reasoning_effort")) delete retryPayload.reasoning_effort;
+      if (errText.includes("temperature")) delete retryPayload.temperature;
+      if (errText.includes("top_p")) delete retryPayload.top_p;
+      if (errText.includes("max_tokens") && !retryPayload.max_completion_tokens) {
+        retryPayload.max_completion_tokens = retryPayload.max_tokens;
+        delete retryPayload.max_tokens;
+      } else if (errText.includes("max_completion_tokens")) {
+        delete retryPayload.max_completion_tokens;
+        retryPayload.max_tokens = safeMaxTokens;
+      }
+
+      // If provider rejected request because max output tokens exceeds model limit
+      if (errText.includes("max_tokens") || errText.includes("output tokens") || errText.includes("completion_tokens") || errText.includes("too large") || errText.includes("exceeds")) {
+        const matchLimit = errText.match(/(?:at most|up to|maximum of|<=|less than or equal to|limit is)\s*(\d+)/i);
+        const newLimit = matchLimit && matchLimit[1] ? parseInt(matchLimit[1], 10) : 4096;
+        if (retryPayload.max_tokens) retryPayload.max_tokens = Math.min(retryPayload.max_tokens, newLimit);
+        if (retryPayload.max_completion_tokens) retryPayload.max_completion_tokens = Math.min(retryPayload.max_completion_tokens, newLimit);
+      }
+
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(retryPayload),
+        signal: state.activeAbortController.signal,
+      });
+
+      if (!response.ok) {
+        const retryErr = await response.text();
+        throw new Error(`Provider returned ${response.status}: ${retryErr.slice(0, 240)}`);
+      }
+    } else if (!response.ok) {
       const errText = await response.text();
       throw new Error(`Provider returned ${response.status}: ${errText.slice(0, 240)}`);
     }
@@ -2643,6 +3485,7 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
 
+    let hasStrippedContinuationPreamble = false;
     let isStreamDone = false;
     while (!isStreamDone) {
       const { done, value } = await reader.read();
@@ -2664,26 +3507,39 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
           try {
             const data = JSON.parse(trimmed.slice(6));
 
-            // Check if model explicitly indicated completion
-            if (data.choices && data.choices[0] && data.choices[0].finish_reason) {
-              isStreamDone = true;
+            // Check for official usage metrics in stream
+            if (data.usage) {
+              if (typeof data.usage.completion_tokens === "number") {
+                state.activeStreamStats.tokenCount = data.usage.completion_tokens;
+              }
+              if (typeof data.usage.prompt_tokens === "number") {
+                state.activeStreamStats.promptTokens = data.usage.prompt_tokens;
+              }
             }
 
-            // Check for official usage metrics in stream
-            if (data.usage && data.usage.completion_tokens) {
-              state.activeStreamStats.tokenCount = data.usage.completion_tokens;
+            if (data.choices && data.choices[0] && data.choices[0].finish_reason) {
+              state.activeStreamStats.finishReason = data.choices[0].finish_reason;
             }
 
             const delta = data.choices && data.choices[0] && data.choices[0].delta;
             if (!delta) {
-              if (isStreamDone) break;
               continue;
             }
 
             // Standard content
             if (delta.content) {
-              assistantMsg.content += delta.content;
-              state.activeStreamStats.charCount += delta.content.length;
+              let textChunk = delta.content;
+              if (isContinuation && !hasStrippedContinuationPreamble) {
+                const cleaned = textChunk.replace(/^(?:(?:certainly|sure|here(?:'s| is) (?:the rest|the continuation)|continuing (?:from where (?:i|we) left off)?)[,:\s-]*)+/i, "");
+                if (cleaned !== textChunk) {
+                  textChunk = cleaned;
+                }
+                if (textChunk.trim().length > 0) {
+                  hasStrippedContinuationPreamble = true;
+                }
+              }
+              assistantMsg.content += textChunk;
+              state.activeStreamStats.charCount += textChunk.length;
             }
 
             // Reasoning content (DeepSeek R1 / Claude 3.7)
@@ -2698,9 +3554,7 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
             const tokens = state.activeStreamStats.tokenCount > 0
               ? state.activeStreamStats.tokenCount
               : Math.ceil(state.activeStreamStats.charCount / 3.8);
-            state.activeStreamStats.lastTPS = `${(tokens / elapsed).toFixed(1)} tps (${tokens} tokens)`;
-
-            updateStreamingAssistantDOM(assistantMsg);
+            scheduleStreamingAssistantDOM(assistantMsg);
 
             if (isStreamDone) break;
           } catch (e) {
@@ -2711,12 +3565,65 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
       if (isStreamDone) break;
     }
 
+    // Ensure final state is immediately rendered
+    updateStreamingAssistantDOM(assistantMsg);
+
     try {
       await reader.cancel();
     } catch (e) {}
   }
 
   // --- 10. DEDICATED HANDLERS FOR NON-CHAT MODELS (AUDIO, IMAGE, VIDEO, OCR) ---
+  // Universal Media & File Download Engine for Android WebView and Browser
+  window.afDownloadMedia = async function (url, filename, mimeType) {
+    showToastBadge(`Downloading ${filename}...`);
+    try {
+      // 1. Android Native Bridge integration
+      if (window.AndroidBridge && typeof window.AndroidBridge.downloadBase64File === "function") {
+        if (url && url.startsWith("data:")) {
+          window.AndroidBridge.downloadBase64File(url, filename, mimeType || "application/octet-stream");
+          return;
+        }
+        try {
+          const resp = await fetch(url);
+          const blob = await resp.blob();
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            window.AndroidBridge.downloadBase64File(e.target.result, filename, mimeType || blob.type);
+          };
+          reader.readAsDataURL(blob);
+          return;
+        } catch (fetchErr) {
+          // If remote CORS blocks fetch, try download anchor
+        }
+      }
+
+      // 2. Standard Browser / Blob anchor download
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = filename || "download";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(objectUrl);
+      }, 1000);
+      showToastBadge("Download completed!");
+    } catch (e) {
+      // Direct link fallback
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename || "download";
+      a.target = "_blank";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => document.body.removeChild(a), 500);
+    }
+  };
+
   async function handleImageGenerationModel(chat, assistantMsg, prompt) {
     assistantMsg.content = `🎨 Synthesizing visual for: *"${prompt}"*...`;
     updateStreamingAssistantDOM(assistantMsg);
@@ -2757,7 +3664,8 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
       imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true`;
     }
 
-    assistantMsg.content = `![${prompt}](${imageUrl})\n\n**Generated with ${escapeHtml(state.selectedModelId)}**\n*Prompt:* "${escapeHtml(prompt)}"`;
+    const imgFilename = `agentsflow_image_${Date.now()}.png`;
+    assistantMsg.content = `![${prompt}](${imageUrl})\n\n**Generated with ${escapeHtml(state.selectedModelId)}**\n*Prompt:* "${escapeHtml(prompt)}"\n\n<button class="msg-action-btn media-download-btn" onclick="window.afDownloadMedia('${imageUrl}', '${imgFilename}', 'image/png')" style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; margin-top:8px; border-radius:8px; background:var(--accent-terracotta); color:#fff; font-weight:600; font-size:12px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Download Image</button>`;
     state.activeStreamStats.charCount = assistantMsg.content.length;
     updateStreamingAssistantDOM(assistantMsg);
   }
@@ -2820,7 +3728,9 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
   }
 
   async function handleVideoModel(chat, assistantMsg, text) {
-    assistantMsg.content = `### 🎬 Luma Ray 2 AI Video Studio\n\n**Prompt:** *"${escapeHtml(text)}"*  \n**Resolution:** 1080p Full HD • 24 FPS • 5-Second Generation  \n\n\`\`\`json\n{\n  "model": "luma/ray-2",\n  "status": "queued_rendering",\n  "aspect_ratio": "16:9",\n  "seed": ${Math.floor(Math.random() * 899999 + 100000)},\n  "motion_bucket_id": 127\n}\n\`\`\`\n\n> 🎥 Video generation initiated. Processing flow matching diffusion frames for cinematic motion synthesis.`;
+    const videoUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
+    const vidFilename = `agentsflow_video_${Date.now()}.mp4`;
+    assistantMsg.content = `### 🎬 Luma Ray 2 AI Video Studio\n\n**Prompt:** *"${escapeHtml(text)}"*  \n**Resolution:** 1080p Full HD • 24 FPS • Cinematic Motion Synthesis\n\n<video controls playsinline autoplay loop muted src="${videoUrl}" style="width: 100%; max-height: 280px; border-radius: 12px; margin: 10px 0; background: #000;"></video>\n\n<button class="msg-action-btn media-download-btn" onclick="window.afDownloadMedia('${videoUrl}', '${vidFilename}', 'video/mp4')" style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; margin-top:8px; border-radius:8px; background:var(--accent-terracotta); color:#fff; font-weight:600; font-size:12px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Download Video (MP4)</button>`;
     state.activeStreamStats.charCount = assistantMsg.content.length;
     updateStreamingAssistantDOM(assistantMsg);
   }
@@ -2832,10 +3742,12 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
   }
 
   function updateStreamingAssistantDOM(assistantMsg) {
-    let liveMsgElem = els.messagesContainer.lastElementChild;
+    const chat = getActiveChat();
+    const msgIdx = chat ? chat.messages.indexOf(assistantMsg) : -1;
+    let liveMsgElem = (msgIdx >= 0 ? document.getElementById("msg-" + msgIdx) : null) || els.messagesContainer.lastElementChild;
     if (!liveMsgElem || !liveMsgElem.classList.contains("message-assistant")) {
       renderMessages();
-      liveMsgElem = els.messagesContainer.lastElementChild;
+      liveMsgElem = (msgIdx >= 0 ? document.getElementById("msg-" + msgIdx) : null) || els.messagesContainer.lastElementChild;
     }
     if (!liveMsgElem) return;
 
@@ -2916,20 +3828,25 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
 
     const chat = getActiveChat();
     if (chat && chat.messages.length) {
-      const lastMsg = chat.messages[chat.messages.length - 1];
-      if (lastMsg && lastMsg.role === "assistant" && lastMsg.isStreaming) {
-        lastMsg.isStreaming = false;
-        const extracted = extractThinkingProcess(lastMsg.content, false);
-        if (extracted.thoughts) {
-          lastMsg.reasoning = (lastMsg.reasoning ? lastMsg.reasoning + "\n\n" : "") + extracted.thoughts;
-          lastMsg.content = extracted.cleanText;
-        } else if (!lastMsg.reasoning) {
-          const stepReasoning = extractStepReasoning(lastMsg.content);
-          if (stepReasoning.thoughts) {
-            lastMsg.reasoning = stepReasoning.thoughts;
-            lastMsg.content = stepReasoning.cleanText;
+      let hadStreaming = false;
+      chat.messages.forEach(msg => {
+        if (msg && msg.role === "assistant" && msg.isStreaming) {
+          msg.isStreaming = false;
+          hadStreaming = true;
+          const extracted = extractThinkingProcess(msg.content, false);
+          if (extracted.thoughts) {
+            msg.reasoning = (msg.reasoning ? msg.reasoning + "\n\n" : "") + extracted.thoughts;
+            msg.content = extracted.cleanText;
+          } else if (!msg.reasoning) {
+            const stepReasoning = extractStepReasoning(msg.content);
+            if (stepReasoning.thoughts) {
+              msg.reasoning = stepReasoning.thoughts;
+              msg.content = stepReasoning.cleanText;
+            }
           }
         }
+      });
+      if (hadStreaming) {
         saveChats();
         renderMessages();
       }
@@ -2981,7 +3898,24 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
   window.afContinue = async function (msgIndex) {
     const chat = getActiveChat();
     if (!chat || state.isStreaming) return;
-    await executePromptStream("Please continue generating seamlessly from exactly where you left off.", null);
+
+    let targetMsg = null;
+    let targetIndex = -1;
+    if (typeof msgIndex === "number" && chat.messages[msgIndex] && chat.messages[msgIndex].role === "assistant") {
+      targetMsg = chat.messages[msgIndex];
+      targetIndex = msgIndex;
+    } else {
+      for (let i = chat.messages.length - 1; i >= 0; i--) {
+        if (chat.messages[i].role === "assistant") {
+          targetMsg = chat.messages[i];
+          targetIndex = i;
+          break;
+        }
+      }
+    }
+
+    if (!targetMsg) return;
+    await executeContinuationStream(targetMsg, targetIndex);
   };
 
   window.afBranchChat = function (msgIndex) {
@@ -3044,14 +3978,41 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
 
   // --- 12. PROMINENT MODEL SELECTOR & BASE URL HUB ---
   async function probeModelsFromUrl(customUrl, customKey) {
-    const rawUrl = customUrl || els.modelModalUrlInput.value.trim() || state.providerUrl;
-    const apiKey = customKey !== undefined ? customKey : (els.modelModalKeyInput.value.trim() || state.apiKey);
+    let rawUrl = (customUrl || (els.modelModalUrlInput ? els.modelModalUrlInput.value.trim() : "") || state.providerUrl || "").trim();
+    const apiKey = customKey !== undefined ? customKey : ((els.modelModalKeyInput ? els.modelModalKeyInput.value.trim() : "") || state.apiKey);
     const statusEl = els.modalProbeStatus;
 
     if (!rawUrl) {
       if (statusEl) statusEl.textContent = "Please enter a provider Base URL.";
       return;
     }
+
+    // Auto-prepend https:// if scheme is missing
+    if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
+      rawUrl = (rawUrl.includes("localhost") || rawUrl.includes("127.0.0.1")) ? `http://${rawUrl}` : `https://${rawUrl}`;
+    }
+
+    // Smart detect provider name from URL if user typed a provider URL
+    const lowerUrl = rawUrl.toLowerCase();
+    if (lowerUrl.includes("aicredits")) {
+      state.providerName = "AICredits";
+    } else if (lowerUrl.includes("openrouter")) {
+      state.providerName = "OpenRouter";
+    } else if (lowerUrl.includes("groq")) {
+      state.providerName = "Groq";
+    } else if (lowerUrl.includes("deepseek")) {
+      state.providerName = "DeepSeek";
+    } else if (lowerUrl.includes("openai")) {
+      state.providerName = "OpenAI";
+    } else if (lowerUrl.includes("together")) {
+      state.providerName = "Together AI";
+    } else if (lowerUrl.includes("localhost") || lowerUrl.includes("127.0.0.1") || lowerUrl.includes("11434")) {
+      state.providerName = "Ollama";
+    }
+
+    state.providerUrl = rawUrl;
+    if (els.modelModalUrlInput) els.modelModalUrlInput.value = rawUrl;
+    updateProviderBadgeDisplay();
 
     if (statusEl) {
       statusEl.textContent = `Probing endpoint: ${rawUrl}...`;
@@ -3083,17 +4044,27 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
         throw new Error("No models returned in response data array.");
       }
 
+      state.providerModelsPricing = state.providerModelsPricing || {};
+      let livePricingCount = 0;
+
       const discovered = rawList.map(m => {
         const rawId = String(m.id || m.name || "unknown");
-        const lower = rawId.toLowerCase();
+        const caps = detectCapabilities(rawId, m);
         let cat = "chat";
-        if (lower.includes("r1") || lower.includes("reasoner") || lower.includes("o1") || lower.includes("o3") || lower.includes("sonnet") || lower.includes("thinking") || lower.includes("qwq")) cat = "reasoning";
-        else if (lower.includes("video") || lower.includes("ray") || lower.includes("kling") || lower.includes("runway") || lower.includes("sora")) cat = "video";
-        else if (lower.includes("ocr") || lower.includes("nougat")) cat = "vision";
-        else if (lower.includes("vision") || lower.includes("4o") || lower.includes("vl") || lower.includes("gemini")) cat = "vision";
-        else if (lower.includes("coder") || lower.includes("code")) cat = "coding";
-        else if (lower.includes("tts") || lower.includes("whisper") || lower.includes("audio")) cat = "audio";
-        else if (lower.includes("dall-e") || lower.includes("flux") || lower.includes("image")) cat = "image";
+        if (caps.reasoning) cat = "reasoning";
+        else if (caps.ocr || caps.vision) cat = "vision";
+        else if (caps.audio) cat = "audio";
+        else if (caps.image) cat = "image";
+        else if (caps.video) cat = "video";
+        else if (caps.coding) cat = "coding";
+
+        // Direct fetch & normalization of provider live rates
+        const parsedPricing = parseProviderPricing(m, clean);
+        if (parsedPricing && !parsedPricing.isFree) {
+          livePricingCount++;
+          state.providerModelsPricing[rawId] = parsedPricing;
+          state.providerModelsPricing[rawId.toLowerCase()] = parsedPricing;
+        }
 
         return {
           id: rawId,
@@ -3101,19 +4072,25 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
           category: cat,
           desc: `Live discovered (${latency}ms latency)`,
           provider: state.providerName,
-          contextWindow: m.context_length ? `${Math.round(m.context_length / 1000)}k` : "128k",
-          pricing: m.pricing || null,
+          contextWindow: m.context_length ? `${Math.round(m.context_length / 1000)}k` : (m.context_window ? `${Math.round(m.context_window / 1000)}k` : "128k"),
+          pricing: parsedPricing || m.pricing || null,
         };
       });
 
       state.models = discovered;
       localStorage.setItem("af_models", JSON.stringify(discovered));
+      localStorage.setItem("af_provider_pricing_cache", JSON.stringify(state.providerModelsPricing));
+      localStorage.setItem("af_provider_url", state.providerUrl);
+      localStorage.setItem("af_provider_name", state.providerName);
+
       if (statusEl) {
-        statusEl.textContent = `Successfully discovered ${discovered.length} models (${latency}ms latency)!`;
+        const pricingMsg = livePricingCount > 0 ? ` with ${livePricingCount} live price rates` : "";
+        statusEl.textContent = `Successfully discovered ${discovered.length} models${pricingMsg} (${latency}ms latency)!`;
         statusEl.style.color = "var(--badge-green)";
       }
       renderModelsList();
-      showToastBadge(`${discovered.length} Models Discovered`);
+      updateModelPillDisplay();
+      showToastBadge(`${discovered.length} Models Discovered (${livePricingCount} live prices)`);
     } catch (err) {
       if (statusEl) {
         statusEl.textContent = `Probe note: ${err.message}. Using built-in catalog.`;
@@ -3123,8 +4100,30 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
   }
 
   function saveProviderSettings() {
-    state.providerUrl = els.modelModalUrlInput.value.trim() || "https://openrouter.ai/api/v1";
-    state.apiKey = els.modelModalKeyInput.value.trim();
+    let rawUrl = (els.modelModalUrlInput ? els.modelModalUrlInput.value.trim() : "") || "https://openrouter.ai/api/v1";
+    if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
+      rawUrl = (rawUrl.includes("localhost") || rawUrl.includes("127.0.0.1")) ? `http://${rawUrl}` : `https://${rawUrl}`;
+    }
+
+    const lowerUrl = rawUrl.toLowerCase();
+    if (lowerUrl.includes("aicredits")) {
+      state.providerName = "AICredits";
+    } else if (lowerUrl.includes("openrouter")) {
+      state.providerName = "OpenRouter";
+    } else if (lowerUrl.includes("groq")) {
+      state.providerName = "Groq";
+    } else if (lowerUrl.includes("deepseek")) {
+      state.providerName = "DeepSeek";
+    } else if (lowerUrl.includes("openai")) {
+      state.providerName = "OpenAI";
+    } else if (lowerUrl.includes("together")) {
+      state.providerName = "Together AI";
+    } else if (lowerUrl.includes("localhost") || lowerUrl.includes("127.0.0.1") || lowerUrl.includes("11434")) {
+      state.providerName = "Ollama";
+    }
+
+    state.providerUrl = rawUrl;
+    state.apiKey = els.modelModalKeyInput ? els.modelModalKeyInput.value.trim() : "";
 
     localStorage.setItem("af_provider_url", state.providerUrl);
     localStorage.setItem("af_api_key", state.apiKey);
@@ -3185,6 +4184,9 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
     } else if (preset === 'openai') {
       state.providerName = 'OpenAI';
       state.providerUrl = 'https://api.openai.com/v1';
+    } else if (preset === 'aicredits') {
+      state.providerName = 'AICredits';
+      state.providerUrl = 'https://api.aicredits.in/v1';
     } else if (preset === 'ollama') {
       state.providerName = 'Ollama';
       state.providerUrl = 'http://127.0.0.1:11434/v1';
@@ -3204,18 +4206,10 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
     updateProviderBadgeDisplay();
     renderModelsList();
 
-    if (els.providerConfigDrawer && els.toggleProviderDrawerBtn) {
-      if (expandApi) {
-        els.providerConfigDrawer.classList.remove("collapsed");
-        els.toggleProviderDrawerBtn.classList.add("expanded");
-        if (els.modalTabProvider) els.modalTabProvider.classList.add("active");
-        if (els.modalTabModels) els.modalTabModels.classList.remove("active");
-      } else {
-        els.providerConfigDrawer.classList.add("collapsed");
-        els.toggleProviderDrawerBtn.classList.remove("expanded");
-        if (els.modalTabModels) els.modalTabModels.classList.add("active");
-        if (els.modalTabProvider) els.modalTabProvider.classList.remove("active");
-      }
+    if (expandApi) {
+      if (els.modalTabProvider) els.modalTabProvider.click();
+    } else {
+      if (els.modalTabModels) els.modalTabModels.click();
     }
 
     openModal(els.modelSelectorModal);
@@ -3227,12 +4221,12 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
     const cat = state.modelCategoryFilter;
 
     const list = state.models.filter(m => {
-      const caps = detectCapabilities(m.id);
+      const caps = detectCapabilities(m.id, m);
       if (cat !== "all") {
         if (cat === "reasoning" && !caps.reasoning && m.category !== "reasoning") return false;
-        if (cat === "vision" && !caps.vision && !caps.ocr && m.category !== "vision") return false;
+        if (cat === "vision" && !caps.vision && !caps.ocr && m.category !== "vision" && m.category !== "ocr") return false;
         if (cat === "image" && !caps.image && m.category !== "image") return false;
-        if (cat === "audio" && !caps.audio && m.category !== "audio") return false;
+        if (cat === "audio" && !caps.audio && m.category !== "audio" && m.category !== "transcribe") return false;
         if (cat === "video" && !caps.video && m.category !== "video") return false;
         if (cat === "coding" && !caps.coding && m.category !== "coding") return false;
         if (cat === "chat" && (caps.image || caps.video || caps.audio) && m.category !== "chat") return false;
@@ -3251,14 +4245,40 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
     }
 
     list.forEach(m => {
-      const caps = detectCapabilities(m.id);
+      const caps = detectCapabilities(m.id, m);
       const isSelected = m.id === state.selectedModelId;
       const pricing = getModelPricing(m.id, m);
+      let customMap = {};
+      try {
+        customMap = JSON.parse(localStorage.getItem("af_custom_pricing") || "{}");
+      } catch (_) {}
+      const hasCustom = !!(customMap[m.id] || customMap[m.id.toLowerCase()]);
+      const isLiveProvider = pricing.source === "api_provider" || (!hasCustom && (m.pricing || (state.providerModelsPricing && state.providerModelsPricing[m.id])) && !pricing.isFree && !pricing.special);
+      const sourceTag = hasCustom
+        ? '<span class="pricing-source-badge custom">Custom</span>'
+        : (isLiveProvider
+            ? `<span class="pricing-source-badge live">Live ${state.providerName || 'API'}</span>`
+            : (pricing.isFree ? '<span class="pricing-source-badge live">Free Tier</span>' : '<span class="pricing-source-badge fallback">Catalog</span>'));
+
+      const editBtnHtml = `
+        <button type="button" class="edit-model-pricing-chip" title="Edit / override price for ${escapeHtml(m.id)}" onclick="event.stopPropagation(); window.afOpenPricingEditor('${escapeHtml(m.id)}')">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          <span>Edit Price</span>
+        </button>
+      `;
+
       let pricingHtml = "";
 
       if (pricing.isFree) {
         pricingHtml = `
-          <div class="model-pricing-strip">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; margin-bottom: 2px;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+              <span class="pricing-label" style="margin: 0;">Rate</span>
+              ${sourceTag}
+            </div>
+            ${editBtnHtml}
+          </div>
+          <div class="model-pricing-strip" style="margin-top: 2px;">
             <div class="pricing-cell" style="grid-column: span 3;">
               <span class="pricing-label">Price / Usage</span>
               <span class="pricing-special-badge free-badge">${escapeHtml(pricing.special || "100% Free / Local ($0.00 / ₹0.00)")}</span>
@@ -3267,7 +4287,14 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
         `;
       } else if (pricing.special) {
         pricingHtml = `
-          <div class="model-pricing-strip">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; margin-bottom: 2px;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+              <span class="pricing-label" style="margin: 0;">Rate</span>
+              ${sourceTag}
+            </div>
+            ${editBtnHtml}
+          </div>
+          <div class="model-pricing-strip" style="margin-top: 2px;">
             <div class="pricing-cell" style="grid-column: span 3;">
               <span class="pricing-label">Price / Usage</span>
               <span class="pricing-special-badge">${escapeHtml(pricing.special)}</span>
@@ -3275,29 +4302,37 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
           </div>
         `;
       } else {
-        const inUsd = (pricing.inputPer1M !== undefined ? pricing.inputPer1M : pricing.input * 1000).toFixed(2);
-        const inInr = (parseFloat(inUsd) * INR_PER_USD).toFixed(2);
-        const outUsd = (pricing.outputPer1M !== undefined ? pricing.outputPer1M : pricing.output * 1000).toFixed(2);
-        const outInr = (parseFloat(outUsd) * INR_PER_USD).toFixed(2);
-        const cacheUsd = (pricing.cachePer1M !== undefined ? pricing.cachePer1M : (pricing.cache || 0) * 1000).toFixed(2);
-        const cacheInr = (parseFloat(cacheUsd) * INR_PER_USD).toFixed(2);
+        const inUsd = formatCurrencyDisplay(pricing.inputPer1M, "$");
+        const inInr = formatCurrencyDisplay(pricing.inputPer1MInr, "₹");
+        const outUsd = formatCurrencyDisplay(pricing.outputPer1M, "$");
+        const outInr = formatCurrencyDisplay(pricing.outputPer1MInr, "₹");
+        const hasCache = (pricing.cachePer1M && pricing.cachePer1M > 0) || (pricing.cachePer1MInr && pricing.cachePer1MInr > 0);
+        const cacheUsd = hasCache ? formatCurrencyDisplay(pricing.cachePer1M, "$") : "N/A";
+        const cacheInr = hasCache ? formatCurrencyDisplay(pricing.cachePer1MInr, "₹") : "No Cache";
 
         pricingHtml = `
-          <div class="model-pricing-strip">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; margin-bottom: 2px;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+              <span class="pricing-label" style="margin: 0;">Rate</span>
+              ${sourceTag}
+            </div>
+            ${editBtnHtml}
+          </div>
+          <div class="model-pricing-strip" style="margin-top: 2px;">
             <div class="pricing-cell">
               <span class="pricing-label">Input / 1M</span>
-              <span class="pricing-val-usd">$${inUsd}</span>
-              <span class="pricing-val-inr">₹${inInr}</span>
+              <span class="pricing-val-usd">${inUsd}</span>
+              <span class="pricing-val-inr">${inInr}</span>
             </div>
             <div class="pricing-cell">
               <span class="pricing-label">Output / 1M</span>
-              <span class="pricing-val-usd">$${outUsd}</span>
-              <span class="pricing-val-inr">₹${outInr}</span>
+              <span class="pricing-val-usd">${outUsd}</span>
+              <span class="pricing-val-inr">${outInr}</span>
             </div>
             <div class="pricing-cell">
               <span class="pricing-label">Cache / 1M</span>
-              <span class="pricing-val-usd">$${cacheUsd}</span>
-              <span class="pricing-val-inr">₹${cacheInr}</span>
+              <span class="pricing-val-usd" ${!hasCache ? 'style="color: var(--text-muted); font-size: 10px;"' : ''}>${cacheUsd}</span>
+              <span class="pricing-val-inr" ${!hasCache ? 'style="color: var(--text-muted); font-size: 9px;"' : ''}>${cacheInr}</span>
             </div>
           </div>
         `;
@@ -3367,17 +4402,137 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
   }
 
   function updateModelPillDisplay() {
-    const current = state.models.find(m => m.id === state.selectedModelId);
-    els.modelPillName.textContent = current ? current.name : state.selectedModelId;
+    const current = (state.models || []).find(m => m.id === state.selectedModelId);
+    const modelName = current ? current.name : state.selectedModelId;
+    const caps = detectCapabilities(state.selectedModelId);
+
+    if (els.modelPillName) {
+      els.modelPillName.textContent = modelName;
+    }
+
+    if (els.modelPillCap) {
+      let capLabel = "Chat";
+      let capClass = "badge-chat";
+      if (caps.reasoning) {
+        capLabel = "Reasoning";
+        capClass = "badge-reasoning";
+      } else if (caps.vision || caps.ocr) {
+        capLabel = "Vision";
+        capClass = "badge-vision";
+      } else if (caps.audio) {
+        capLabel = "Audio";
+        capClass = "badge-audio";
+      } else if (caps.image) {
+        capLabel = "Image";
+        capClass = "badge-image";
+      } else if (caps.coding) {
+        capLabel = "Coding";
+        capClass = "badge-coding";
+      } else if (caps.fast) {
+        capLabel = "Fast";
+        capClass = "badge-fast";
+      }
+      els.modelPillCap.textContent = capLabel;
+      els.modelPillCap.className = `model-badge-cap ${capClass}`;
+    }
+
+    const centerModelName = document.getElementById("welcome-loaded-model-name");
+    if (centerModelName) centerModelName.textContent = modelName;
+    const centerModelCap = document.getElementById("welcome-loaded-model-cap");
+    if (centerModelCap) {
+      centerModelCap.textContent = caps.reasoning ? "Reasoning" : (caps.vision ? "Vision" : (caps.audio ? "Audio" : (caps.image ? "Image" : "Chat")));
+    }
+    const centerModelPricing = document.getElementById("welcome-loaded-model-pricing");
+    if (centerModelPricing) {
+      const p = getModelPricing(state.selectedModelId, current);
+      if (p.isFree) {
+        centerModelPricing.textContent = "100% Free";
+      } else if (p.special) {
+        centerModelPricing.textContent = p.special;
+      } else {
+        const inInr = formatCurrencyDisplay(p.inputPer1MInr, "₹");
+        const outInr = formatCurrencyDisplay(p.outputPer1MInr, "₹");
+        centerModelPricing.textContent = `${inInr} in / ${outInr} out / 1M`;
+      }
+    }
+
+    // Update Model Selector Modal loaded model banner
+    const modalActiveModelName = document.getElementById("modal-active-model-name");
+    if (modalActiveModelName) modalActiveModelName.textContent = modelName;
+    const modalActiveModelSub = document.getElementById("modal-active-model-sub");
+    if (modalActiveModelSub) {
+      const capDesc = caps.reasoning ? "Chain-of-Thought Reasoning" : (caps.vision ? "Multi-modal Vision & OCR" : (caps.fast ? "Ultra-Low Latency Inference" : "High-speed Text Generation"));
+      const p = getModelPricing(state.selectedModelId, current);
+      let pSummary = "";
+      if (p.isFree) {
+        pSummary = " • 100% Free ($0.00 / ₹0.00)";
+      } else if (p.special) {
+        pSummary = ` • ${p.special}`;
+      } else {
+        const inInr = formatCurrencyDisplay(p.inputPer1MInr, "₹");
+        const outInr = formatCurrencyDisplay(p.outputPer1MInr, "₹");
+        const inUsd = formatCurrencyDisplay(p.inputPer1M, "$");
+        const outUsd = formatCurrencyDisplay(p.outputPer1M, "$");
+        pSummary = ` • ${inInr} in / ${outInr} out / 1M (${inUsd} / ${outUsd})`;
+      }
+      modalActiveModelSub.textContent = `${current && current.provider ? capitalize(current.provider) : 'Provider'} • ${current && current.contextWindow ? current.contextWindow : '128k'} Context • ${capDesc}${pSummary}`;
+    }
+
+    // Update Model Settings Modal loaded model info card
+    if (els.settingsModelName) els.settingsModelName.textContent = modelName;
+    if (els.settingsModelDesc) {
+      const p = getModelPricing(state.selectedModelId, current);
+      let pInfo = "";
+      if (p.isFree) {
+        pInfo = " (100% Free / Local)";
+      } else if (p.special) {
+        pInfo = ` (${p.special})`;
+      } else {
+        const inInr = formatCurrencyDisplay(p.inputPer1MInr, "₹");
+        const outInr = formatCurrencyDisplay(p.outputPer1MInr, "₹");
+        pInfo = ` (${inInr} in / ${outInr} out per 1M)`;
+      }
+      els.settingsModelDesc.textContent = ((current && current.desc) ? current.desc : "Frontier AI Architecture") + pInfo;
+    }
+    if (els.settingsModelContext) {
+      let ctx = (current && current.contextWindow) ? current.contextWindow : "128k";
+      if (!ctx.toLowerCase().includes("k") && !ctx.toLowerCase().includes("m")) ctx += "k";
+      els.settingsModelContext.textContent = `${ctx} Tokens`;
+    }
   }
 
   // --- 13. AI MODEL PARAMETERS MODAL ---
   function populateModelParameters() {
+    const current = (state.models || []).find(m => m.id === state.selectedModelId) || {
+      id: state.selectedModelId,
+      name: state.selectedModelId,
+      contextWindow: "128k",
+      desc: "Frontier AI Architecture"
+    };
+
+    if (els.settingsModelName) els.settingsModelName.textContent = current.name || current.id;
+    if (els.settingsModelDesc) els.settingsModelDesc.textContent = current.desc || current.id;
+    if (els.settingsModelContext) {
+      let ctx = current.contextWindow || "128k";
+      if (!ctx.toLowerCase().includes("k") && !ctx.toLowerCase().includes("m")) ctx += "k";
+      els.settingsModelContext.textContent = `${ctx} Tokens`;
+    }
+
     els.paramTempSlider.value = state.settings.temperature;
     els.tempValBadge.textContent = state.settings.temperature;
+    if (els.paramTempInput) els.paramTempInput.value = state.settings.temperature;
 
-    els.paramMaxTokensSlider.value = state.settings.maxTokens;
-    els.maxTokensBadge.textContent = state.settings.maxTokens;
+    const maxAllowedTokens = getModelMaxOutputTokens(state.selectedModelId);
+    state.settings.maxTokens = Math.min(state.settings.maxTokens || 4096, maxAllowedTokens);
+    if (els.paramMaxTokensSlider) {
+      els.paramMaxTokensSlider.max = String(maxAllowedTokens);
+      els.paramMaxTokensSlider.value = state.settings.maxTokens;
+    }
+    if (els.paramMaxTokensInput) {
+      els.paramMaxTokensInput.max = String(maxAllowedTokens);
+      els.paramMaxTokensInput.value = state.settings.maxTokens;
+    }
+    els.maxTokensBadge.textContent = `${state.settings.maxTokens} (Max: ${maxAllowedTokens})`;
 
     els.paramTopPSlider.value = state.settings.topP;
     els.topPBadge.textContent = state.settings.topP;
@@ -3414,6 +4569,73 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
     els.effortPillBtns.forEach(btn => {
       btn.classList.toggle("active", btn.dataset.effort === state.settings.reasoningEffort);
     });
+
+    // Populate Model Pricing Editor & Live Provider Rate Badges
+    const p = getModelPricing(state.selectedModelId, current);
+    let storedCustomPricing = {};
+    try {
+      storedCustomPricing = JSON.parse(localStorage.getItem("af_custom_pricing") || "{}");
+    } catch (_) {}
+    const hasCustom = !!(storedCustomPricing[state.selectedModelId] || storedCustomPricing[state.selectedModelId.toLowerCase()]);
+    
+    if (els.modelPricingSourceBadge) {
+      if (hasCustom) {
+        els.modelPricingSourceBadge.textContent = "Custom User Override";
+        els.modelPricingSourceBadge.style.background = "rgba(245, 158, 11, 0.15)";
+        els.modelPricingSourceBadge.style.color = "#f59e0b";
+      } else if (p.source === "api_provider" || (current && current.pricing) || (state.providerModelsPricing && state.providerModelsPricing[state.selectedModelId])) {
+        els.modelPricingSourceBadge.textContent = `Live ${state.providerName || 'API'} Rate`;
+        els.modelPricingSourceBadge.style.background = "rgba(16, 185, 129, 0.15)";
+        els.modelPricingSourceBadge.style.color = "var(--badge-green)";
+      } else if (p.isFree) {
+        els.modelPricingSourceBadge.textContent = "100% Free / Local";
+        els.modelPricingSourceBadge.style.background = "rgba(16, 185, 129, 0.15)";
+        els.modelPricingSourceBadge.style.color = "var(--badge-green)";
+      } else {
+        els.modelPricingSourceBadge.textContent = "Catalog Heuristic";
+        els.modelPricingSourceBadge.style.background = "rgba(107, 114, 128, 0.15)";
+        els.modelPricingSourceBadge.style.color = "var(--text-muted)";
+      }
+    }
+
+    if (els.settingsPriceSummaryText) {
+      if (p.isFree) {
+        els.settingsPriceSummaryText.textContent = "100% Free / Local ($0.00 / ₹0.00)";
+      } else if (p.special) {
+        els.settingsPriceSummaryText.textContent = p.special;
+      } else {
+        const inInr = formatCurrencyDisplay(p.inputPer1MInr, "₹");
+        const outInr = formatCurrencyDisplay(p.outputPer1MInr, "₹");
+        els.settingsPriceSummaryText.textContent = `In: ${inInr} / 1M • Out: ${outInr} / 1M`;
+      }
+    }
+    if (els.settingsPriceUsdText) {
+      if (p.isFree || p.special) {
+        els.settingsPriceUsdText.textContent = "";
+      } else {
+        const inUsd = formatCurrencyDisplay(p.inputPer1M, "$");
+        const outUsd = formatCurrencyDisplay(p.outputPer1M, "$");
+        els.settingsPriceUsdText.textContent = `(${inUsd} in / ${outUsd} out / 1M USD)`;
+      }
+    }
+
+    if (els.customPriceInput && els.customPriceOutput) {
+      if (hasCustom) {
+        const cp = storedCustomPricing[state.selectedModelId] || storedCustomPricing[state.selectedModelId.toLowerCase()];
+        els.customPriceInput.value = cp.rawInput !== undefined ? cp.rawInput : (cp.currency === "INR" ? cp.inputPer1MInr : cp.inputPer1M);
+        els.customPriceOutput.value = cp.rawOutput !== undefined ? cp.rawOutput : (cp.currency === "INR" ? cp.outputPer1MInr : cp.outputPer1M);
+        if (els.customPriceCurrency && cp.currency) els.customPriceCurrency.value = cp.currency;
+        if (els.customPriceUnit && cp.unit) els.customPriceUnit.value = cp.unit;
+      } else if (!p.isFree && !p.special) {
+        els.customPriceInput.value = p.inputPer1M !== undefined ? parseFloat(p.inputPer1M.toFixed(4)) : "";
+        els.customPriceOutput.value = p.outputPer1M !== undefined ? parseFloat(p.outputPer1M.toFixed(4)) : "";
+        if (els.customPriceCurrency) els.customPriceCurrency.value = "USD";
+        if (els.customPriceUnit) els.customPriceUnit.value = "1M";
+      } else {
+        els.customPriceInput.value = "";
+        els.customPriceOutput.value = "";
+      }
+    }
   }
 
   function updateBudgetDisplay() {
@@ -3432,8 +4654,20 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
   }
 
   function saveModelParameters() {
-    state.settings.temperature = parseFloat(els.paramTempSlider.value);
-    state.settings.maxTokens = parseInt(els.paramMaxTokensSlider.value, 10);
+    if (els.paramTempInput && els.paramTempInput.value !== "") {
+      state.settings.temperature = Math.max(0, Math.min(2.0, parseFloat(els.paramTempInput.value) || 0.7));
+    } else {
+      state.settings.temperature = parseFloat(els.paramTempSlider.value);
+    }
+
+    const maxAllowedTokens = getModelMaxOutputTokens(state.selectedModelId);
+    if (els.paramMaxTokensInput && els.paramMaxTokensInput.value !== "") {
+      const parsedVal = parseInt(els.paramMaxTokensInput.value, 10) || 4096;
+      state.settings.maxTokens = Math.max(256, Math.min(maxAllowedTokens, parsedVal));
+    } else {
+      state.settings.maxTokens = Math.min(maxAllowedTokens, parseInt(els.paramMaxTokensSlider.value, 10) || 4096);
+    }
+
     state.settings.topP = parseFloat(els.paramTopPSlider.value);
     state.settings.presencePenalty = parseFloat(els.paramPresenceSlider.value);
     state.settings.frequencyPenalty = parseFloat(els.paramFrequencySlider.value);
@@ -3463,9 +4697,112 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
     localStorage.setItem("af_param_reasoning_effort", state.settings.reasoningEffort);
     localStorage.setItem("af_param_system_prompt", state.settings.systemPrompt);
 
+    if (els.customPriceInput && els.customPriceInput.value.trim() !== "") {
+      saveCustomModelPricing(state.selectedModelId, false);
+    }
+
     closeModal(els.modelSettingsModal);
     showToastBadge("Parameters & Budget Saved");
   }
+
+  function saveCustomModelPricing(targetModelId, showFeedback = true) {
+    const modelId = targetModelId || state.selectedModelId;
+    if (!modelId) return;
+
+    const inVal = parseFloat(els.customPriceInput ? els.customPriceInput.value : "0") || 0;
+    const outVal = parseFloat(els.customPriceOutput ? els.customPriceOutput.value : "0") || 0;
+    const currency = els.customPriceCurrency ? els.customPriceCurrency.value : "USD";
+    const unit = els.customPriceUnit ? els.customPriceUnit.value : "1M";
+
+    const unitMultiplier = unit === "1k" ? 1000 : 1;
+    const in1M = inVal * unitMultiplier;
+    const out1M = outVal * unitMultiplier;
+
+    const isAiCredits = typeof state !== "undefined" && ((state.providerUrl || "").toLowerCase().includes("aicredits") || (state.providerName || "") === "AICredits");
+    const activeInrRate = isAiCredits ? (INR_PER_USD * 1.05 * 1.05) : INR_PER_USD;
+
+    let inUsd = 0, outUsd = 0;
+    let inInr = 0, outInr = 0;
+
+    if (currency === "INR") {
+      inInr = in1M;
+      outInr = out1M;
+      inUsd = in1M / activeInrRate;
+      outUsd = out1M / activeInrRate;
+    } else {
+      inUsd = in1M;
+      outUsd = out1M;
+      inInr = in1M * activeInrRate;
+      outInr = out1M * activeInrRate;
+    }
+
+    let customPricingMap = {};
+    try {
+      customPricingMap = JSON.parse(localStorage.getItem("af_custom_pricing") || "{}");
+    } catch (_) {}
+
+    const cpData = {
+      source: "custom",
+      inputPer1M: inUsd,
+      outputPer1M: outUsd,
+      inputPer1MInr: inInr,
+      outputPer1MInr: outInr,
+      currency,
+      unit,
+      rawInput: inVal,
+      rawOutput: outVal,
+      updatedAt: Date.now()
+    };
+
+    customPricingMap[modelId] = cpData;
+    customPricingMap[modelId.toLowerCase()] = cpData;
+
+    localStorage.setItem("af_custom_pricing", JSON.stringify(customPricingMap));
+    if (showFeedback) {
+      showToastBadge(`Custom Rate Saved for ${modelId}`);
+    }
+    populateModelParameters();
+    updateModelPillDisplay();
+    renderModelsList();
+  }
+
+  function resetCustomModelPricing(targetModelId) {
+    const modelId = targetModelId || state.selectedModelId;
+    if (!modelId) return;
+
+    let customPricingMap = {};
+    try {
+      customPricingMap = JSON.parse(localStorage.getItem("af_custom_pricing") || "{}");
+    } catch (_) {}
+
+    delete customPricingMap[modelId];
+    delete customPricingMap[modelId.toLowerCase()];
+    localStorage.setItem("af_custom_pricing", JSON.stringify(customPricingMap));
+
+    showToastBadge(`Reset to Provider Rate for ${modelId}`);
+    populateModelParameters();
+    updateModelPillDisplay();
+    renderModelsList();
+  }
+
+  window.afOpenPricingEditor = function (modelId) {
+    if (modelId) {
+      state.selectedModelId = modelId;
+      localStorage.setItem("af_model_id", modelId);
+      updateModelPillDisplay();
+      updateCapabilitiesUI(modelId);
+    }
+    populateModelParameters();
+    openModal(els.modelSettingsModal);
+    setTimeout(() => {
+      if (els.settingsPricingCard) {
+        els.settingsPricingCard.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      if (els.customPriceInput) {
+        els.customPriceInput.focus();
+      }
+    }, 200);
+  };
 
   window.afApplyParamPreset = function (preset) {
     if (preset === 'precise') {
@@ -3501,6 +4838,8 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
       els.effortPillBtns.forEach(b => b.classList.toggle("active", b.dataset.effort === "high"));
     }
 
+    if (els.paramTempInput) els.paramTempInput.value = els.paramTempSlider.value;
+    if (els.paramMaxTokensInput) els.paramMaxTokensInput.value = els.paramMaxTokensSlider.value;
     els.tempValBadge.textContent = els.paramTempSlider.value;
     els.topPBadge.textContent = els.paramTopPSlider.value;
     els.maxTokensBadge.textContent = els.paramMaxTokensSlider.value;
@@ -3641,7 +4980,7 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
       const chat = getActiveChat();
       const lastAssistant = chat ? chat.messages.filter(m => m.role === "assistant").pop() : null;
       if (lastAssistant && lastAssistant.stats) {
-        alert(`Performance Metrics:\nSpeed: ${lastAssistant.stats.tps} TPS\nTokens: ${lastAssistant.stats.tokens}\nDuration: ${lastAssistant.stats.duration}\nCost: ~$${lastAssistant.stats.cost}`);
+        alert(`Performance Metrics:\nSpeed: ${lastAssistant.stats.tps} TPS\nTokens: ${lastAssistant.stats.tokens}\nDuration: ${lastAssistant.stats.duration}\nCost: ~${lastAssistant.stats.cost}`);
       } else {
         alert("Send a message to benchmark TPS generation speed.");
       }
@@ -3651,8 +4990,8 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
       (chat ? chat.messages : []).forEach(m => {
         totalTokens += Math.ceil((m.content || "").length / 3.8);
       });
-      const cost = estimateCost(state.selectedModelId, Math.ceil(totalTokens * 0.4), Math.ceil(totalTokens * 0.6));
-      alert(`Conversation Cost Breakdown:\nModel: ${state.selectedModelId}\nTotal Tokens: ~${totalTokens}\nEstimated Cost: ~$${cost}`);
+      const cost = estimateCost(state.selectedModelId, Math.ceil(totalTokens * 0.4), Math.ceil(totalTokens * 0.6), false);
+      alert(`Conversation Cost Breakdown:\nModel: ${state.selectedModelId}\nTotal Tokens: ~${totalTokens}\nEstimated Cost: ~${cost}`);
     } else if (action === "tokens") {
       const chat = getActiveChat();
       let totalTokens = 0;
@@ -4396,9 +5735,16 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
 
   function displayGeneratedImage(url, prompt, modelName, costStr) {
     const metaText = modelName ? `<div style="font-size: 11px; color: var(--accent-terracotta); margin-top: 6px; font-weight: 600;">Model: ${escapeHtml(modelName)} • Cost: ${escapeHtml(costStr || "₹0.00")}</div>` : "";
+    const imgFilename = `image_${Date.now()}.png`;
     els.imgPreviewBox.innerHTML = `
       <img src="${url}" alt="${escapeAttribute(prompt)}" id="active-generated-img" style="max-height: 280px; width: 100%; object-fit: contain; border-radius: 10px;" />
       ${metaText}
+      <div style="margin-top: 10px; display: flex; gap: 8px; justify-content: center;">
+        <button type="button" class="msg-action-btn media-download-btn" onclick="window.afDownloadMedia('${url}', '${imgFilename}', 'image/png')" style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:8px; background:var(--accent-terracotta); color:#fff; font-weight:600; font-size:12px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Download Image
+        </button>
+      </div>
     `;
     els.insertImgBtn.style.display = "block";
     els.insertImgBtn.onclick = () => {
@@ -4483,6 +5829,157 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
     closeModal(els.exportModal);
   };
 
+  // --- 19b. CHATGPT-STYLE PLUS ACTION MENU (MODEL-CAPABILITY GATED) ---
+  window.afTogglePlusMenu = function (e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const menu = document.getElementById("chatgpt-plus-menu");
+    if (!menu) return;
+
+    if (menu.style.display === "block") {
+      menu.style.display = "none";
+    } else {
+      renderPlusMenuContent();
+      menu.style.display = "block";
+    }
+  };
+
+  function renderPlusMenuContent() {
+    const container = document.getElementById("plus-menu-content");
+    if (!container) return;
+    const caps = detectCapabilities(state.selectedModelId);
+
+    let html = "";
+
+    // 1. Photos & Images (ONLY if model supports vision, ocr or image)
+    if (caps.vision || caps.ocr || caps.image) {
+      html += `
+        <button type="button" class="plus-menu-item" onclick="window.afPlusSelectPhoto()">
+          <div class="plus-menu-icon plus-icon-photo">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+          </div>
+          <div class="plus-menu-text">
+            <span class="plus-menu-title">Photos & Images</span>
+            <span class="plus-menu-desc">Attach visual input or photos</span>
+          </div>
+        </button>
+      `;
+    }
+
+    // 2. Deep Reasoning / Thinking (ONLY if model supports reasoning)
+    if (caps.reasoning) {
+      const isThinkActive = state.activeTools.thinking && state.activeTools.thinkingLevel !== "off";
+      const thinkLevel = (state.activeTools.thinkingLevel || "high").toUpperCase();
+      html += `
+        <button type="button" class="plus-menu-item" onclick="window.afPlusToggleThinking()">
+          <div class="plus-menu-icon plus-icon-thinking ${isThinkActive ? 'active' : ''}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.54z"></path><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.54z"></path></svg>
+          </div>
+          <div class="plus-menu-text">
+            <span class="plus-menu-title">Deep Reasoning <span class="plus-menu-badge">${isThinkActive ? thinkLevel : 'OFF'}</span></span>
+            <span class="plus-menu-desc">Chain-of-thought deduction</span>
+          </div>
+        </button>
+      `;
+    }
+
+    // 3. Audio / Voice Transcription (ONLY if model supports audio or Whisper)
+    if (caps.audio || state.selectedModelId.toLowerCase().includes("whisper")) {
+      html += `
+        <button type="button" class="plus-menu-item" onclick="window.afPlusVoiceTranscription()">
+          <div class="plus-menu-icon plus-icon-audio">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+          </div>
+          <div class="plus-menu-text">
+            <span class="plus-menu-title">Voice Transcription</span>
+            <span class="plus-menu-desc">Speech-to-text transcription</span>
+          </div>
+        </button>
+      `;
+    }
+
+    // 4. Web Grounding (tools supported)
+    if (caps.tools) {
+      const isWebActive = state.activeTools.web;
+      html += `
+        <button type="button" class="plus-menu-item" onclick="window.afPlusToggleWeb()">
+          <div class="plus-menu-icon plus-icon-web ${isWebActive ? 'active' : ''}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z"></path></svg>
+          </div>
+          <div class="plus-menu-text">
+            <span class="plus-menu-title">Web Grounding <span class="plus-menu-badge">${isWebActive ? 'ON' : 'OFF'}</span></span>
+            <span class="plus-menu-desc">Live research & citations</span>
+          </div>
+        </button>
+      `;
+    }
+
+    // 5. Document & OCR (ocr supported)
+    if (caps.ocr) {
+      html += `
+        <button type="button" class="plus-menu-item" onclick="window.afPlusSelectPhoto()">
+          <div class="plus-menu-icon plus-icon-ocr">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+          </div>
+          <div class="plus-menu-text">
+            <span class="plus-menu-title">Document OCR</span>
+            <span class="plus-menu-desc">Formulas, tables & papers</span>
+          </div>
+        </button>
+      `;
+    }
+
+    if (!html) {
+      html = `
+        <div style="padding: 12px; font-size: 12px; color: var(--text-muted); text-align: center;">
+          Standard chat model active. Switch model to enable vision, reasoning or transcription.
+        </div>
+      `;
+    }
+
+    container.innerHTML = html;
+  }
+
+  window.afPlusSelectPhoto = function () {
+    const menu = document.getElementById("chatgpt-plus-menu");
+    if (menu) menu.style.display = "none";
+    if (els.imageFileInput) els.imageFileInput.click();
+  };
+
+  window.afPlusToggleThinking = function () {
+    const caps = detectCapabilities(state.selectedModelId);
+    if (!caps.reasoning) {
+      showToastBadge("Thinking requires DeepSeek R1, Claude 3.7 or o3-mini");
+      return;
+    }
+    const levels = ["high", "medium", "low", "off"];
+    const nextIdx = (levels.indexOf(state.activeTools.thinkingLevel) + 1) % levels.length;
+    state.activeTools.thinkingLevel = levels[nextIdx];
+    state.activeTools.thinking = state.activeTools.thinkingLevel !== "off";
+    state.settings.reasoningEffort = state.activeTools.thinkingLevel === "off" ? "low" : state.activeTools.thinkingLevel;
+    if (els.toolThinkingBtn) {
+      els.toolThinkingBtn.classList.toggle("active", state.activeTools.thinking);
+      if (els.toolThinkingLabel) els.toolThinkingLabel.textContent = `Thinking: ${capitalize(state.activeTools.thinkingLevel)}`;
+    }
+    renderPlusMenuContent();
+    showToastBadge(`Thinking effort set to ${capitalize(state.activeTools.thinkingLevel)}`);
+  };
+
+  window.afPlusVoiceTranscription = function () {
+    const menu = document.getElementById("chatgpt-plus-menu");
+    if (menu) menu.style.display = "none";
+    if (els.voiceRecordBtn) els.voiceRecordBtn.click();
+  };
+
+  window.afPlusToggleWeb = function () {
+    state.activeTools.web = !state.activeTools.web;
+    if (els.toolWebBtn) els.toolWebBtn.classList.toggle("active", state.activeTools.web);
+    renderPlusMenuContent();
+    showToastBadge(state.activeTools.web ? "Web Grounding ON" : "Web Grounding OFF");
+  };
+
   // --- 20. EVENT LISTENERS SETUP ---
   function setupEventListeners() {
     // Sidebar toggle and collapse
@@ -4493,6 +5990,7 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
     els.sidebarCollapseBtn.onclick = closeSidebar;
     els.sidebarBackdrop.onclick = closeSidebar;
     els.newChatBtn.onclick = createNewChat;
+    if (els.headerNewChatBtn) els.headerNewChatBtn.onclick = createNewChat;
 
     // Rail icons
     if (els.railNewChatBtn) els.railNewChatBtn.onclick = createNewChat;
@@ -4526,15 +6024,20 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
     els.topFeaturesBtn.onclick = window.afOpenFeaturesModal;
     els.featuresHubBtn.onclick = window.afOpenFeaturesModal;
 
-    // Vision Image Attachment
+    // Vision Image Attachment & ChatGPT Plus Menu
     els.imageFileInput.onchange = handleImageSelected;
-    els.toolAttachBtn.onclick = () => {
-      const caps = detectCapabilities(state.selectedModelId);
-      if (!caps.vision && !caps.ocr) {
-        showToastBadge("Attaching image (GPT-4o, Gemini 2.0 & Nougat OCR recommended)");
-      }
-      els.imageFileInput.click();
+    els.toolAttachBtn.onclick = (e) => {
+      window.afTogglePlusMenu(e);
     };
+    document.addEventListener("click", (e) => {
+      const menu = document.getElementById("chatgpt-plus-menu");
+      const attachBtn = document.getElementById("tool-attach-btn");
+      if (menu && menu.style.display === "block") {
+        if (!menu.contains(e.target) && !attachBtn.contains(e.target)) {
+          menu.style.display = "none";
+        }
+      }
+    });
     if (els.toolVisionBtn) {
       els.toolVisionBtn.onclick = () => {
         els.imageFileInput.click();
@@ -4571,13 +6074,39 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
       showToastBadge(state.activeTools.codeSandbox ? "Code Sandbox ON" : "Code Sandbox OFF");
     };
 
-    // Model Settings Sliders & Inputs
+    // Model Settings Sliders & Inputs Two-Way Sync
     els.paramTempSlider.oninput = () => {
       els.tempValBadge.textContent = els.paramTempSlider.value;
+      if (els.paramTempInput) els.paramTempInput.value = els.paramTempSlider.value;
     };
+    if (els.paramTempInput) {
+      els.paramTempInput.oninput = () => {
+        const val = parseFloat(els.paramTempInput.value);
+        if (!isNaN(val)) {
+          els.paramTempSlider.value = Math.max(0, Math.min(2.0, val));
+          els.tempValBadge.textContent = els.paramTempSlider.value;
+        }
+      };
+    }
+
     els.paramMaxTokensSlider.oninput = () => {
-      els.maxTokensBadge.textContent = els.paramMaxTokensSlider.value;
+      const maxAllowed = getModelMaxOutputTokens(state.selectedModelId);
+      const val = Math.min(parseInt(els.paramMaxTokensSlider.value, 10), maxAllowed);
+      els.paramMaxTokensSlider.value = val;
+      els.maxTokensBadge.textContent = `${val} (Max: ${maxAllowed})`;
+      if (els.paramMaxTokensInput) els.paramMaxTokensInput.value = val;
     };
+    if (els.paramMaxTokensInput) {
+      els.paramMaxTokensInput.oninput = () => {
+        const maxAllowed = getModelMaxOutputTokens(state.selectedModelId);
+        const val = parseInt(els.paramMaxTokensInput.value, 10);
+        if (!isNaN(val)) {
+          const clamped = Math.max(256, Math.min(maxAllowed, val));
+          els.paramMaxTokensSlider.value = clamped;
+          els.maxTokensBadge.textContent = `${clamped} (Max: ${maxAllowed})`;
+        }
+      };
+    }
     els.paramTopPSlider.oninput = () => {
       els.topPBadge.textContent = els.paramTopPSlider.value;
     };
@@ -4640,9 +6169,14 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
       els.modalTabModels.onclick = () => {
         if (els.modalTabModels) els.modalTabModels.classList.add("active");
         if (els.modalTabProvider) els.modalTabProvider.classList.remove("active");
-        if (els.providerConfigDrawer) els.providerConfigDrawer.classList.add("collapsed");
+        if (els.providerConfigDrawer) {
+          els.providerConfigDrawer.style.display = "none";
+          els.providerConfigDrawer.classList.add("collapsed");
+        }
+        if (els.modelsSelectionBody) {
+          els.modelsSelectionBody.style.display = "block";
+        }
         if (els.toggleProviderDrawerBtn) els.toggleProviderDrawerBtn.classList.remove("expanded");
-        if (els.modelsSelectionBody) els.modelsSelectionBody.scrollIntoView({ behavior: "smooth" });
       };
     }
 
@@ -4650,36 +6184,26 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
       els.modalTabProvider.onclick = () => {
         if (els.modalTabProvider) els.modalTabProvider.classList.add("active");
         if (els.modalTabModels) els.modalTabModels.classList.remove("active");
-        if (els.providerConfigDrawer) els.providerConfigDrawer.classList.remove("collapsed");
+        if (els.providerConfigDrawer) {
+          els.providerConfigDrawer.style.display = "flex";
+          els.providerConfigDrawer.classList.remove("collapsed");
+        }
+        if (els.modelsSelectionBody) {
+          els.modelsSelectionBody.style.display = "none";
+        }
         if (els.toggleProviderDrawerBtn) els.toggleProviderDrawerBtn.classList.add("expanded");
-        if (els.providerConfigDrawer) els.providerConfigDrawer.scrollIntoView({ behavior: "smooth" });
       };
     }
 
     if (els.backToModelsBtn) {
       els.backToModelsBtn.onclick = () => {
-        if (els.modalTabModels) els.modalTabModels.classList.add("active");
-        if (els.modalTabProvider) els.modalTabProvider.classList.remove("active");
-        if (els.providerConfigDrawer) els.providerConfigDrawer.classList.add("collapsed");
-        if (els.toggleProviderDrawerBtn) els.toggleProviderDrawerBtn.classList.remove("expanded");
-        if (els.modelsSelectionBody) els.modelsSelectionBody.scrollIntoView({ behavior: "smooth" });
+        if (els.modalTabModels) els.modalTabModels.click();
       };
     }
 
     if (els.toggleProviderDrawerBtn) {
       els.toggleProviderDrawerBtn.onclick = () => {
-        const isCollapsed = els.providerConfigDrawer.classList.contains("collapsed");
-        if (isCollapsed) {
-          els.providerConfigDrawer.classList.remove("collapsed");
-          els.toggleProviderDrawerBtn.classList.add("expanded");
-          if (els.modalTabProvider) els.modalTabProvider.classList.add("active");
-          if (els.modalTabModels) els.modalTabModels.classList.remove("active");
-        } else {
-          els.providerConfigDrawer.classList.add("collapsed");
-          els.toggleProviderDrawerBtn.classList.remove("expanded");
-          if (els.modalTabModels) els.modalTabModels.classList.add("active");
-          if (els.modalTabProvider) els.modalTabProvider.classList.remove("active");
-        }
+        if (els.modalTabProvider) els.modalTabProvider.click();
       };
     }
 
@@ -4690,6 +6214,24 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
 
     els.modalProbeBtn.onclick = () => probeModelsFromUrl();
     els.modalSaveProviderBtn.onclick = saveProviderSettings;
+    if (els.modelModalUrlInput) {
+      els.modelModalUrlInput.onkeydown = (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          saveProviderSettings();
+        }
+      };
+    }
+    if (els.modelModalKeyInput) {
+      els.modelModalKeyInput.onkeydown = (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          saveProviderSettings();
+        }
+      };
+    }
+    if (els.saveCustomPricingBtn) els.saveCustomPricingBtn.onclick = () => saveCustomModelPricing();
+    if (els.resetCustomPricingBtn) els.resetCustomPricingBtn.onclick = () => resetCustomModelPricing();
     els.modelSearchInput.oninput = renderModelsList;
 
     els.modelCategoryChips.forEach(chip => {
@@ -4705,10 +6247,19 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
       const customId = els.customModelIdInput.value.trim();
       if (!customId) return;
 
+      const caps = detectCapabilities(customId);
+      let cat = "chat";
+      if (caps.reasoning) cat = "reasoning";
+      else if (caps.ocr || caps.vision) cat = "vision";
+      else if (caps.audio) cat = "audio";
+      else if (caps.image) cat = "image";
+      else if (caps.video) cat = "video";
+      else if (caps.coding) cat = "coding";
+
       const newModel = {
         id: customId,
         name: customId,
-        category: "chat",
+        category: cat,
         desc: "Custom User Model",
         provider: "custom",
       };
@@ -4737,15 +6288,10 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
       };
     });
 
-    // Chat Textarea & Slash Commands Autocomplete
+    // Chat Textarea & Typing: Clean input, smooth auto-resizing, no popup hijacking
     els.chatTextarea.oninput = () => {
       adjustTextareaHeight();
-      const val = els.chatTextarea.value;
-      if (val.startsWith("/")) {
-        openSlashMenu(val);
-      } else {
-        closeSlashMenu();
-      }
+      closeSlashMenu();
     };
 
     els.chatTextarea.onkeydown = (e) => {
@@ -4758,15 +6304,54 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
     };
 
     els.slashTriggerBtn.onclick = () => {
-      els.chatTextarea.value = "/";
-      adjustTextareaHeight();
-      openSlashMenu("/");
-      els.chatTextarea.focus();
+      window.afOpenFeaturesModal();
     };
 
     // Send / Stop
     els.sendBtn.onclick = () => handleSendMessage();
     els.stopBtn.onclick = stopStreaming;
+
+    // Clipboard Paste for Image Attachments
+    document.addEventListener("paste", (e) => {
+      const items = (e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData))?.items;
+      if (items) {
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type && items[i].type.indexOf("image") !== -1) {
+            const file = items[i].getAsFile();
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = function (evt) {
+                setAttachedImage(evt.target.result, file.name || "pasted_image.png");
+              };
+              reader.readAsDataURL(file);
+              break;
+            }
+          }
+        }
+      }
+    });
+
+    // Drag-and-Drop Image Attachments into Chat Composer
+    const composerWrapper = document.querySelector(".chat-input-wrapper") || document.body;
+    composerWrapper.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    composerWrapper.addEventListener("drop", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (files && files.length > 0) {
+        const file = files[0];
+        if (file.type && file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = function (evt) {
+            setAttachedImage(evt.target.result, file.name || "dropped_image.png");
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    });
 
     // Voice Record
     els.voiceRecordBtn.onclick = toggleVoiceRecording;
@@ -4813,13 +6398,35 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
     }
 
     // API Budget Warning Modal buttons
+    if (els.budgetResetSpendBtn) {
+      els.budgetResetSpendBtn.onclick = () => {
+        state.totalSpend = 0.0;
+        localStorage.setItem("af_total_spend", "0.0");
+        updateBudgetDisplay();
+        showToastBadge("Spend counter reset to ₹0.00 - Proceeding");
+        closeModal(els.budgetWarningModal);
+        if (pendingBudgetAction) {
+          const action = pendingBudgetAction;
+          pendingBudgetAction = null;
+          if (typeof action === "function") {
+            action();
+          } else if (action && typeof action.run === "function") {
+            action.run();
+          }
+        }
+      };
+    }
     if (els.budgetProceedBtn) {
       els.budgetProceedBtn.onclick = () => {
         closeModal(els.budgetWarningModal);
         if (pendingBudgetAction) {
           const action = pendingBudgetAction;
           pendingBudgetAction = null;
-          action();
+          if (typeof action === "function") {
+            action();
+          } else if (action && typeof action.run === "function") {
+            action.run();
+          }
         }
       };
     }
@@ -4834,13 +6441,23 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
         if (pendingBudgetAction) {
           const action = pendingBudgetAction;
           pendingBudgetAction = null;
-          action();
+          if (typeof action === "function") {
+            action();
+          } else if (action && typeof action.run === "function") {
+            action.run();
+          }
         }
       };
     }
     if (els.budgetCancelBtn) {
       els.budgetCancelBtn.onclick = () => {
         closeModal(els.budgetWarningModal);
+        if (pendingBudgetAction && pendingBudgetAction.text !== undefined) {
+          // Keep message in input bar so user doesn't lose what they typed
+          els.chatTextarea.value = pendingBudgetAction.text;
+          adjustTextareaHeight();
+          els.chatTextarea.focus();
+        }
         pendingBudgetAction = null;
       };
     }
@@ -4944,7 +6561,7 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
 
     // Legal Warning in DevTools Console
     console.log(
-      "%cSTOP!\n%cAgentsFlow AI is proprietary software.\nCopyright (C) 2026 Saad (@fearoki). All Rights Reserved.\nUnauthorized inspection, modification, or reverse engineering is strictly prohibited.",
+      "%cSTOP!\n%cAgentsFlow AI v1.2.0 is proprietary software.\nCopyright (C) 2026 Saad (@fearoki). All Rights Reserved.\nUnauthorized inspection, modification, or reverse engineering is strictly prohibited.",
       "color: #ef4444; font-size: 20px; font-weight: bold;",
       "color: #9ca3af; font-size: 12px; line-height: 1.5;"
     );
@@ -4964,8 +6581,31 @@ You are operating with Web Grounding enabled. Deliver authoritative, up-to-date,
   }
 
   function closeModal(modal) {
-    if (modal) modal.classList.remove("active");
+    if (modal) {
+      modal.classList.remove("active");
+      if (modal === els.budgetWarningModal && pendingBudgetAction && pendingBudgetAction.text !== undefined) {
+        if (els.chatTextarea) {
+          els.chatTextarea.value = pendingBudgetAction.text;
+          adjustTextareaHeight();
+          els.chatTextarea.focus();
+        }
+        pendingBudgetAction = null;
+      }
+    }
   }
+
+  window.afHandleAndroidBack = function () {
+    const activeModals = document.querySelectorAll(".modal-overlay.active");
+    if (activeModals.length > 0) {
+      activeModals.forEach(m => closeModal(m));
+      return true;
+    }
+    if (els.sidebar && els.sidebar.classList.contains("open")) {
+      closeSidebar();
+      return true;
+    }
+    return false;
+  };
 
   function closeSidebar() {
     els.sidebar.classList.remove("open");

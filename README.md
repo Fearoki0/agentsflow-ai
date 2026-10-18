@@ -1,4 +1,4 @@
-# AgentsFlow AI
+# AgentsFlow AI (v1.2.0)
 
 AgentsFlow AI is an independent, mobile-first AI client designed to run modern frontier models directly on your Android device without middlemen, cloud proxies, or subscription markups.
 
@@ -16,7 +16,7 @@ Most chatbot apps route your requests through their own cloud servers before sen
 
 ### 2. Capability Auto-Detection
 Instead of showing generic buttons that break when a model doesn't support them, AgentsFlow dynamically checks the selected model's true capabilities:
-- **Reasoning Models: Automatically routes `<think>` blocks, Hermes tags, and internal deductions into a dedicated, collapsible **Thinking Process** drawer with monospace styling and character counters.
+- **Reasoning Models (DeepSeek R1, Claude 3.7 Sonnet, o1)**: Automatically routes `<think>` blocks, Hermes tags, and internal deductions into a dedicated, collapsible **Thinking Process** drawer with monospace styling and character counters.
 - **Vision Models**: Enables camera and image attachment inputs only when the selected model actually supports image understanding.
 - **Coding Models**: Activates syntax highlighting, formatted tables, and an interactive client-side sandbox.
 - **Dedicated Multi-Modal Models**: Image generators (DALL-E, FLUX), speech-to-text (Whisper), and voice models are handled through dedicated interfaces so you never get bad-request errors from sending text to an image-only model.
@@ -42,10 +42,11 @@ Built with a 2026 Liquid Glass aesthetic featuring translucent frosted glass sur
 
 ---
 
-## Direct Finalized APK
+## Direct Finalized APK (v1.2.0)
 
 A pre-built, production-signed native Android APK is ready to install:
 - **File:** `builds/agentsflow-ai.apk`
+- **Version:** v1.2.0 (Build 3)
 - **Architecture:** Universal Android (Android 7.0 / API 24 through Android 15 / API 35)
 - **Signature:** Android Signature Scheme v2 & v3 compliant
 

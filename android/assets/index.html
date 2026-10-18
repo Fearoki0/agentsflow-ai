@@ -81,6 +81,7 @@
           <div class="model-selector-group">
             <button class="model-pill" id="model-pill-trigger" title="Select Model">
               <span class="model-pill-dot" id="model-pill-dot"><span class="liquid-dot"></span></span>
+              <span class="model-loaded-badge">Loaded:</span>
               <span id="current-model-name">DeepSeek R1</span>
               <span class="model-badge-cap" id="model-pill-cap">Thinking</span>
             </button>
@@ -92,6 +93,9 @@
         </div>
 
         <div class="header-right">
+          <button class="icon-btn" id="header-new-chat-btn" title="New Chat">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+          </button>
           <button class="action-pill-btn features-pill-btn" id="top-features-btn" title="100+ Actionable Features Hub">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
             <span>Features</span>
@@ -115,18 +119,9 @@
 
       <!-- Floating Composer -->
       <footer id="composer-container">
-        <!-- Slash Command Autocomplete Pop-up Menu -->
-        <div class="slash-commands-menu" id="slash-commands-menu">
-          <div class="slash-menu-header">
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
-              <span>Actionable Commands (100+ Features)</span>
-            </div>
-            <span style="font-size: 10px; color: var(--text-muted);">Type to filter or press Esc</span>
-          </div>
-          <div class="slash-commands-list" id="slash-commands-list">
-            <!-- Rendered dynamically -->
-          </div>
+        <!-- Hidden Slash Command container for backward compatibility -->
+        <div class="slash-commands-menu" id="slash-commands-menu" style="display: none !important;">
+          <div class="slash-commands-list" id="slash-commands-list"></div>
         </div>
 
         <div class="composer-box">
@@ -141,27 +136,25 @@
             <span>Listening... Speak your prompt clearly</span>
           </div>
 
-          <!-- Dynamic Active Tools Bar with Auto-Unlock Indicators -->
+          <!-- Dynamic Active Tools Bar: Minimalist Modern ChatGPT / Claude Chips -->
           <div class="composer-tools-bar" id="composer-tools-bar">
             <button type="button" class="tool-pill-btn active unlocked" id="tool-thinking-btn" title="Toggle Deep Reasoning">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tool-svg"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.54z"></path><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.54z"></path></svg>
-              <span class="tool-pill-label" id="tool-thinking-label">Thinking: High</span>
-            </button>
-            <button type="button" class="tool-pill-btn" id="tool-vision-btn" title="Multi-Modal Vision Attached" style="display: none;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tool-svg"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-              <span class="tool-pill-label" id="tool-vision-label">Vision</span>
+              <span class="tool-pill-label" id="tool-thinking-label">Reasoning</span>
             </button>
             <button type="button" class="tool-pill-btn" id="tool-web-btn" title="Web Grounding & Citations">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tool-svg"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-              <span class="tool-pill-label">Web Grounding</span>
+              <span class="tool-pill-label">Search Web</span>
             </button>
-            <button type="button" class="tool-pill-btn active" id="tool-code-btn" title="Enable Interactive Code Sandbox">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tool-svg"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+            <button type="button" class="tool-pill-btn" id="tool-vision-btn" title="Multi-Modal Vision Attached" style="display: none;">
+              <span class="tool-pill-label" id="tool-vision-label">Vision</span>
+            </button>
+            <button type="button" class="tool-pill-btn" id="tool-code-btn" style="display: none;">
               <span class="tool-pill-label">Sandbox</span>
             </button>
-            <div class="capability-unlocked-pill" id="capability-unlocked-pill">
+            <div class="capability-unlocked-pill" id="capability-unlocked-pill" style="display: none;">
               <span class="liquid-spark-dot"></span>
-              <span id="active-capabilities-summary">Reasoning Ready</span>
+              <span id="active-capabilities-summary">Ready</span>
             </div>
           </div>
 
@@ -179,31 +172,31 @@
           <!-- Hidden Image File Input for Vision Upload -->
           <input type="file" id="image-file-input" accept="image/*" style="display: none;">
 
-          <textarea id="chat-textarea" rows="1" placeholder="Type a message or / for 100+ actionable features (/goal, /plan, /boost, /code)..."></textarea>
+          <textarea id="chat-textarea" rows="1" placeholder="Message AgentsFlow..."></textarea>
 
           <div class="composer-toolbar">
             <div class="composer-tools-left">
-              <button class="tool-icon-btn highlight-feature-btn" id="features-hub-btn" title="100+ Features Hub (Autonomous Agents, Dev, STEM, Strategy)">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
+              <!-- ChatGPT-style Plus Action Menu (Model-Dependent Options) -->
+              <div class="chatgpt-plus-menu" id="chatgpt-plus-menu" style="display: none;">
+                <div class="plus-menu-content" id="plus-menu-content">
+                  <!-- Dynamically populated based on active model capabilities -->
+                </div>
+              </div>
+
+              <button class="tool-icon-btn plus-attach-btn" id="tool-attach-btn" title="Add attachments, reasoning & tools">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
               </button>
-              <button class="tool-icon-btn slash-trigger-btn" id="slash-trigger-btn" title="Actionable Slash Commands (/goal, /plan, /boost)">
-                <span>/</span>
-              </button>
-              <button class="tool-icon-btn" id="tool-attach-btn" title="Attach Image for Multi-Modal Vision Analysis">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
-              </button>
-              <!-- Secondary Tools accessible via clean SVG buttons -->
-              <button class="tool-icon-btn" id="image-gen-btn" title="AI Image Studio (DALL-E 3 & Flux)">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-              </button>
-              <!-- Hidden fallback elements to ensure existing listeners don't break -->
+              <!-- Hidden fallback elements to prevent breaking listeners -->
+              <span id="slash-trigger-btn" style="display: none;"></span>
+              <span id="features-hub-btn" style="display: none;"></span>
+              <span id="image-gen-btn" style="display: none;"></span>
               <span id="model-selector-quick-btn" style="display: none;"></span>
               <span id="prompt-lib-btn" style="display: none;"></span>
             </div>
 
             <div class="composer-tools-right">
               <button class="tool-icon-btn" id="voice-record-btn" title="Voice Dictation">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
               </button>
               <button class="send-btn" id="send-btn" title="Send Message">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
@@ -249,7 +242,7 @@
       <!-- Dedicated Model Selection View -->
       <div class="modal-tab-view active" id="modal-view-models">
         <!-- Option to open Model API & Provider URL Options -->
-        <button type="button" class="provider-drawer-toggle" id="toggle-provider-drawer-btn" title="Toggle Provider API, Base URL & Keys">
+        <button type="button" class="provider-drawer-toggle" id="toggle-provider-drawer-btn" style="display: none;" title="Toggle Provider API, Base URL & Keys">
         <div class="provider-drawer-toggle-left">
           <span class="status-indicator-dot online"></span>
           <span class="provider-drawer-toggle-title">Provider API & Base URL</span>
@@ -269,6 +262,10 @@
             <button type="button" class="provider-preset-btn active" data-preset="openrouter" onclick="window.afSetProviderPreset('openrouter')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
               <span>OpenRouter</span>
+            </button>
+            <button type="button" class="provider-preset-btn" data-preset="aicredits" onclick="window.afSetProviderPreset('aicredits')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v10M8 10h8M8 14h6"></path></svg>
+              <span>AICredits (₹)</span>
             </button>
             <button type="button" class="provider-preset-btn" data-preset="groq" onclick="window.afSetProviderPreset('groq')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
@@ -333,10 +330,22 @@
 
       <!-- Dedicated Model Selection View Content -->
       <div class="models-selection-body" id="models-selection-body">
+        <!-- Prominent Currently Loaded Model Banner -->
+        <div class="modal-active-model-card" id="modal-loaded-model-banner">
+          <div class="modal-active-model-left">
+            <span class="loaded-status-dot"></span>
+            <div>
+              <div class="modal-active-model-title">Loaded Model: <strong id="modal-active-model-name">DeepSeek R1</strong></div>
+              <div class="modal-active-model-sub" id="modal-active-model-sub">DeepSeek • 128k Context • Chain-of-Thought Reasoning</div>
+            </div>
+          </div>
+          <span class="active-badge-pill" id="modal-active-model-badge">Active</span>
+        </div>
+
         <div class="model-selection-header-row">
-        <span class="selection-section-label">Available Models</span>
-        <span class="model-count-tag" id="models-available-count">15 Ready</span>
-      </div>
+          <span class="selection-section-label">Available Models</span>
+          <span class="model-count-tag" id="models-available-count">15 Ready</span>
+        </div>
 
       <!-- Model Category Filter Chips -->
       <div class="model-category-chips">
@@ -451,139 +460,206 @@
     <div class="modal-card">
       <div class="modal-header">
         <div>
-          <h3 class="modal-title">AI Model Parameters & Settings</h3>
-          <div style="font-size: 11px; color: var(--text-muted);">Configure generation parameters, limits, penalties, and system instructions</div>
+          <h3 class="modal-title">Model Settings & Parameters</h3>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Configure generation parameters, limits, and behavior</div>
         </div>
         <button class="modal-close-btn" title="Close">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="6" y2="18"></line></svg>
         </button>
       </div>
 
+      <!-- Active Model Info Card with Accurate Context Window -->
+      <div id="settings-model-info" class="settings-model-card">
+        <div class="settings-model-left">
+          <span class="loaded-status-dot"></span>
+          <div>
+            <div class="settings-model-heading">Loaded Model: <strong id="settings-model-name">DeepSeek R1</strong></div>
+            <div class="settings-model-sub" id="settings-model-desc">Frontier chain-of-thought reasoning</div>
+          </div>
+        </div>
+        <div class="settings-model-right">
+          <div class="settings-context-label">Context Window</div>
+          <div class="settings-context-value" id="settings-model-context">128k Tokens</div>
+        </div>
+      </div>
+
+      <!-- Model Pricing & Live Provider Rates / Custom Override -->
+      <div class="settings-card-group" id="settings-pricing-card">
+        <div class="slider-label-row" style="margin-bottom: 6px;">
+          <label class="form-label" style="margin: 0; font-weight: 600;">Model Pricing & Live API Rates</label>
+          <span id="model-pricing-source-badge" class="slider-badge" style="background: rgba(16, 185, 129, 0.15); color: var(--badge-green);">Live Provider Rate</span>
+        </div>
+        <div class="pricing-current-summary" id="settings-current-pricing-display" style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; padding: 8px 10px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;">
+          <span id="settings-price-summary-text" style="font-weight: 600; color: var(--text-primary);">In: ₹14.00 / 1M • Out: ₹57.00 / 1M</span>
+          <span id="settings-price-usd-text" style="font-size: 11px; color: var(--text-muted);">($0.15 / $0.60 USD)</span>
+        </div>
+        
+        <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px;">Custom Price Override (Optional)</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 11px;">Input Token Price</label>
+            <input type="number" id="custom-price-input" class="form-input" min="0" step="0.0001" placeholder="e.g. 0.50 or 40.00">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 11px;">Output Token Price</label>
+            <input type="number" id="custom-price-output" class="form-input" min="0" step="0.0001" placeholder="e.g. 1.50 or 120.00">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 11px;">Currency</label>
+            <select id="custom-price-currency" class="form-input" style="padding: 6px 8px; font-size: 12px;">
+              <option value="INR">₹ INR (Indian Rupee)</option>
+              <option value="USD" selected>$ USD (US Dollar)</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 11px;">Pricing Unit</label>
+            <select id="custom-price-unit" class="form-input" style="padding: 6px 8px; font-size: 12px;">
+              <option value="1M" selected>Per 1 Million Tokens (1M)</option>
+              <option value="1k">Per 1,000 Tokens (1k)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="primary-btn" id="save-custom-pricing-btn" style="flex: 1; padding: 7px 12px; font-size: 12px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            <span>Save Custom Rate</span>
+          </button>
+          <button type="button" class="action-pill-btn" id="reset-custom-pricing-btn" style="padding: 7px 12px; font-size: 12px;" title="Reset this model to live API provider pricing">
+            <span>Reset Rate</span>
+          </button>
+        </div>
+        <span class="param-desc" style="margin-top: 6px;">Overrides default heuristic or API pricing specifically for this model. Stored locally on device.</span>
+      </div>
+
       <!-- Quick Preset Buttons -->
-      <div style="margin-bottom: 6px;">
-        <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; font-weight: 600;">Parameter Presets:</div>
-        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-          <button type="button" class="action-pill-btn" onclick="window.afApplyParamPreset('precise')">Coding & Precise</button>
-          <button type="button" class="action-pill-btn" onclick="window.afApplyParamPreset('balanced')">Balanced</button>
-          <button type="button" class="action-pill-btn" onclick="window.afApplyParamPreset('creative')">Creative</button>
-          <button type="button" class="action-pill-btn" onclick="window.afApplyParamPreset('deep_reasoning')">Deep STEM</button>
+      <div class="settings-section">
+        <div class="settings-section-label">Parameter Presets:</div>
+        <div class="settings-presets-row">
+          <button type="button" class="preset-pill-btn" onclick="window.afApplyParamPreset('precise')">⚡ Coding & Precise</button>
+          <button type="button" class="preset-pill-btn" onclick="window.afApplyParamPreset('balanced')">⚖️ Balanced</button>
+          <button type="button" class="preset-pill-btn" onclick="window.afApplyParamPreset('creative')">🎨 Creative</button>
+          <button type="button" class="preset-pill-btn" onclick="window.afApplyParamPreset('deep_reasoning')">🧠 Deep STEM</button>
         </div>
       </div>
 
-      <!-- Sliders -->
-      <div class="form-group">
-        <div class="slider-label-row">
-          <label class="form-label">Temperature: <span id="temp-val-badge" class="slider-badge">0.7</span></label>
-          <span class="param-desc">Controls randomness. Lower is more deterministic.</span>
+      <!-- Generation Sliders -->
+      <div class="settings-card-group">
+        <div class="form-group">
+          <div class="slider-label-row">
+            <label class="form-label">Temperature: <span id="temp-val-badge" class="slider-badge">0.7</span></label>
+            <input type="number" id="param-temp-input" min="0" max="2" step="0.05" value="0.7" style="display: none;">
+          </div>
+          <input type="range" id="param-temp-slider" min="0" max="2" step="0.05" value="0.7" class="form-range">
+          <span class="param-desc" id="temp-desc-text">Controls randomness (0.0 = deterministic, 2.0 = highly creative).</span>
         </div>
-        <input type="range" id="param-temp-slider" min="0" max="2" step="0.05" value="0.7" class="form-range">
-      </div>
 
-      <div class="form-group">
-        <div class="slider-label-row">
-          <label class="form-label">Max Output Tokens: <span id="max-tokens-badge" class="slider-badge">4096</span></label>
+        <div class="form-group">
+          <div class="slider-label-row">
+            <label class="form-label">Max Output Tokens: <span id="max-tokens-badge" class="slider-badge">4096</span></label>
+            <input type="number" id="param-max-tokens-input" min="256" max="65536" step="256" value="4096" style="display: none;">
+          </div>
+          <input type="range" id="param-max-tokens-slider" min="256" max="32768" step="256" value="4096" class="form-range">
           <span class="param-desc">Upper limit on generation response length.</span>
         </div>
-        <input type="range" id="param-max-tokens-slider" min="256" max="32768" step="256" value="4096" class="form-range">
-      </div>
 
-      <div class="form-group">
-        <div class="slider-label-row">
-          <label class="form-label">Top P (Nucleus Sampling): <span id="top-p-badge" class="slider-badge">0.95</span></label>
-          <span class="param-desc">Alternative to temperature sampling.</span>
+        <div class="form-group">
+          <div class="slider-label-row">
+            <label class="form-label">Top P: <span id="top-p-badge" class="slider-badge">0.95</span></label>
+          </div>
+          <input type="range" id="param-top-p-slider" min="0.05" max="1" step="0.05" value="0.95" class="form-range">
         </div>
-        <input type="range" id="param-top-p-slider" min="0.05" max="1" step="0.05" value="0.95" class="form-range">
-      </div>
 
-      <div class="form-group">
-        <div class="slider-label-row">
-          <label class="form-label">Presence Penalty: <span id="presence-badge" class="slider-badge">0.0</span></label>
-          <span class="param-desc">Encourages talking about new topics (-2.0 to 2.0).</span>
+        <div class="form-group" id="reasoning-effort-group">
+          <div class="slider-label-row">
+            <label class="form-label">Reasoning Effort</label>
+            <span id="reasoning-model-support-note" style="font-size: 10px; color: var(--badge-green);">Thinking Model Active</span>
+          </div>
+          <div class="reasoning-effort-pills">
+            <button type="button" class="effort-pill-btn" data-effort="low">Low</button>
+            <button type="button" class="effort-pill-btn active" data-effort="medium">Medium</button>
+            <button type="button" class="effort-pill-btn" data-effort="high">High</button>
+          </div>
         </div>
-        <input type="range" id="param-presence-slider" min="-2" max="2" step="0.1" value="0.0" class="form-range">
-      </div>
 
-      <div class="form-group">
-        <div class="slider-label-row">
-          <label class="form-label">Frequency Penalty: <span id="frequency-badge" class="slider-badge">0.0</span></label>
-          <span class="param-desc">Reduces verbatim repetition of words (-2.0 to 2.0).</span>
-        </div>
-        <input type="range" id="param-frequency-slider" min="-2" max="2" step="0.1" value="0.0" class="form-range">
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Conversation Memory Limit</label>
-        <select id="param-context-limit" class="form-input">
-          <option value="0">Unlimited (Full Chat History)</option>
-          <option value="50">Last 50 Messages</option>
-          <option value="20" selected>Last 20 Messages (Recommended)</option>
-          <option value="10">Last 10 Messages (Fast / Low Memory)</option>
-          <option value="6">Last 6 Messages (Minimal Context)</option>
-        </select>
-      </div>
-
-      <div class="form-group" id="reasoning-effort-group">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <label class="form-label" style="margin-bottom: 0;">Reasoning Effort</label>
-          <span id="reasoning-model-support-note" style="font-size: 10px; color: var(--accent-terracotta);">Thinking Model Active</span>
-        </div>
-        <div class="reasoning-effort-pills">
-          <button type="button" class="effort-pill-btn" data-effort="low">Low</button>
-          <button type="button" class="effort-pill-btn active" data-effort="medium">Medium</button>
-          <button type="button" class="effort-pill-btn" data-effort="high">High</button>
+        <div class="form-group">
+          <div class="slider-label-row">
+            <label class="form-label">Presence & Frequency Penalties: <span id="presence-badge" class="slider-badge">0.0</span> / <span id="frequency-badge" class="slider-badge">0.0</span></label>
+          </div>
+          <input type="range" id="param-presence-slider" min="-2" max="2" step="0.1" value="0.0" class="form-range" title="Presence Penalty">
+          <input type="range" id="param-frequency-slider" min="-2" max="2" step="0.1" value="0.0" class="form-range" style="margin-top: 6px;" title="Frequency Penalty">
         </div>
       </div>
 
-      <div class="form-group">
-        <label class="form-label">Persistent System Instructions</label>
-        <textarea id="param-system-prompt" class="form-input" rows="3" placeholder="Custom instructions to guide every response from the AI..."></textarea>
-      </div>
-
-      <!-- App Launch Behavior Setting -->
-      <div class="form-group">
-        <label class="form-label">App Launch Behavior</label>
-        <select id="setting-launch-behavior" class="form-input">
-          <option value="new_chat" selected>Open Fresh New Chat (Default)</option>
-          <option value="resume">Resume Last Chat</option>
-        </select>
-        <span class="param-desc">Choose whether opening the app starts with a fresh clean chat or reopens your previous session.</span>
-      </div>
-
-      <!-- API Budget Controller & Money Maintenance -->
-      <div class="form-group" style="padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-          <label class="form-label" style="margin-bottom: 0; font-weight: 600;">API Budget Controller</label>
-          <span id="budget-spend-badge" style="font-size: 11px; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.15); color: var(--badge-green); font-weight: 600;">Spent: ₹0.00 / ₹100.00</span>
+      <!-- API Budget & Money Maintenance Controls -->
+      <div class="settings-card-group">
+        <div class="slider-label-row" style="margin-bottom: 6px;">
+          <label class="form-label" style="margin: 0; font-weight: 600;">API Budget & Money Maintenance</label>
+          <span id="budget-spend-badge" class="slider-badge" style="background: rgba(16, 185, 129, 0.15); color: var(--badge-green);">Spent: ₹0.00 / ₹100.00</span>
         </div>
-        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
-          <label style="font-size: 11px; color: var(--text-muted); white-space: nowrap;">Budget Limit (₹):</label>
-          <input type="number" id="setting-budget-limit" class="form-input" style="flex: 1;" value="100" min="1" step="5">
-          <button type="button" class="action-pill-btn" id="reset-spend-btn" title="Reset Spend Counter">Reset</button>
+        <div class="form-group">
+          <label class="form-label">Session Budget Ceiling (₹ INR)</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="number" id="setting-budget-limit" class="form-input" min="0" step="1" value="100.00" style="flex: 1;" placeholder="Budget ceiling (e.g. 1.00, 10.00 or 100.00)">
+            <button type="button" class="action-pill-btn" id="reset-spend-btn" style="white-space: nowrap; padding: 0 12px;">Reset Spend</button>
+          </div>
+          <span class="param-desc">Alerts you before accumulated generation calls exceed this budget.</span>
         </div>
-        <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary);">
-          <input type="checkbox" id="setting-budget-warn" checked>
-          <label for="setting-budget-warn">Warn before sending if cost exceeds budget limit</label>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: var(--text-primary);">
+            <input type="checkbox" id="setting-budget-warn" checked style="accent-color: var(--accent-terracotta); width: 16px; height: 16px;">
+            <span>Warn before sending requests that exceed budget ceiling</span>
+          </label>
         </div>
       </div>
 
-      <!-- About & Legal License Card -->
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 12px; margin-top: 10px; margin-bottom: 6px;">
-        <div>
-          <div style="font-size: 12px; font-weight: 600; color: var(--text-primary);">About & Legal License</div>
-          <div style="font-size: 11px; color: var(--text-muted);">Copyright (C) 2026 Saad (@fearoki) • All Rights Reserved</div>
+      <!-- System & Memory Controls -->
+      <div class="settings-card-group">
+        <div class="form-group">
+          <label class="form-label">Conversation Memory Limit</label>
+          <select id="param-context-limit" class="form-input">
+            <option value="0">Unlimited (Full Chat History)</option>
+            <option value="50">Last 50 Messages</option>
+            <option value="20" selected>Last 20 Messages (Recommended)</option>
+            <option value="10">Last 10 Messages (Fast / Low Memory)</option>
+            <option value="6">Last 6 Messages (Minimal Context)</option>
+          </select>
         </div>
-        <button type="button" class="action-pill-btn" id="open-about-license-btn" style="font-weight: 600;">View License</button>
-      <!-- Security & App Storage Reset Card -->
-      <div style="padding: 12px; background: rgba(239, 68, 68, 0.04); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; margin-top: 8px; margin-bottom: 8px;">
-        <div style="font-size: 12px; font-weight: 600; color: #fca5a5; margin-bottom: 2px;">Security & App Storage Controls</div>
-        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Your API keys and conversations reside solely on your device. Wipe storage anytime:</div>
-        <div style="display: flex; gap: 8px;">
-          <button type="button" class="action-pill-btn" id="settings-clear-key-btn" style="flex: 1; padding: 7px; color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); font-size: 11px;">Wipe Stored API Key</button>
-          <button type="button" class="action-pill-btn" id="settings-factory-reset-btn" style="flex: 1; padding: 7px; color: #ef4444; border-color: rgba(239, 68, 68, 0.4); font-size: 11px; font-weight: 600;">Factory Reset (Wipe All)</button>
+
+        <div class="form-group">
+          <label class="form-label">Persistent System Instructions</label>
+          <textarea id="param-system-prompt" class="form-input" rows="2" placeholder="Custom instructions to guide every response from the AI..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">App Launch Behavior</label>
+          <select id="setting-launch-behavior" class="form-input">
+            <option value="new_chat" selected>Open Fresh New Chat (Default)</option>
+            <option value="resume">Resume Last Chat</option>
+          </select>
         </div>
       </div>
 
-      <div style="display: flex; gap: 8px; margin-top: 4px;">
+      <!-- Security & Device Storage Card -->
+      <div class="settings-security-card">
+        <div class="settings-security-header">
+          <div>
+            <div class="settings-security-title">Local Storage & Keys</div>
+            <div class="settings-security-desc">Your API keys and conversations reside solely on this device.</div>
+          </div>
+          <button type="button" class="action-pill-btn" id="open-about-license-btn" style="font-size: 11px;">License</button>
+        </div>
+        <div class="settings-security-buttons">
+          <button type="button" class="action-pill-btn" id="settings-clear-key-btn" style="flex: 1; color: #fca5a5;">Wipe Stored API Key</button>
+          <button type="button" class="action-pill-btn" id="settings-factory-reset-btn" style="flex: 1; color: #ef4444; font-weight: 600;">Factory Reset</button>
+        </div>
+      </div>
+
+      <!-- Save & Reset Actions -->
+      <div class="settings-actions-row">
         <button class="primary-btn" id="reset-params-btn" style="flex: 1; background-color: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-subtle);">Reset Defaults</button>
         <button class="primary-btn" id="save-params-btn" style="flex: 1;">Save Settings</button>
       </div>
@@ -749,6 +825,7 @@
         This request is estimated to exceed your set budget limit.
       </p>
       <div style="display: flex; flex-direction: column; gap: 8px;">
+        <button type="button" class="primary-btn" id="budget-reset-spend-btn" style="background: rgba(16, 185, 129, 0.2); color: var(--badge-green); border: 1px solid rgba(16, 185, 129, 0.4);">Reset Spent Counter (₹0.00) & Proceed</button>
         <button type="button" class="primary-btn" id="budget-proceed-btn" style="background: var(--accent-terracotta);">Proceed Anyway</button>
         <button type="button" class="primary-btn" id="budget-switch-free-btn" style="background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-subtle);">Switch to 100% Free Model</button>
         <button type="button" class="action-pill-btn" id="budget-cancel-btn" style="padding: 10px; border-radius: 10px;">Cancel Request</button>
@@ -766,7 +843,7 @@
           </div>
           <div>
             <h3 class="modal-title">About AgentsFlow AI</h3>
-            <div style="font-size: 11px; color: var(--text-muted);">Version 1.0.0 • Native Client</div>
+            <div style="font-size: 11px; color: var(--text-muted);">Version 1.2.0 • Native Client</div>
           </div>
         </div>
         <button class="modal-close-btn" title="Close">

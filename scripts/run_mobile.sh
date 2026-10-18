@@ -35,3 +35,4 @@ echo ""
 
 # Run next dev with --webpack for Android Termux Bionic libc compatibility
 node node_modules/next/dist/bin/next dev --webpack -H "$HOSTNAME" -p "$PORT"
+

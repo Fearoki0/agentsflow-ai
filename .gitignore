@@ -16,3 +16,8 @@ public/uploads/*
 !public/uploads/.gitkeep
 *.log
 .DS_Store
+.agents/
+.skill/
+*.idsig
+builds/*.idsig
+chatbot/
